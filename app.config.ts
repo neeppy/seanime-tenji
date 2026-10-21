@@ -3,7 +3,9 @@ import type { ConfigContext, ExpoConfig } from "expo/config"
 export default ({ config }: ConfigContext): ExpoConfig => {
     const isTV = process.env.EXPO_TV === "1"
     const isTVDev = isTV && process.env.SEANIME_TV_DEV === "1"
-    const version = "0.3.0"
+    const version = process.env.APP_VERSION || "0.3.0"
+    // OTA updates are served by upstream; enabling them here would replace this fork's JS bundle
+    const otaEnabled = process.env.SEANIME_OTA === "1"
     const otaChannel = isTV ? "stable-tv" : "stable"
     const otaUrl = isTV
         ? "https://seanime.app/api/ota/tv/manifest"
@@ -19,7 +21,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         scheme: "seanime",
         userInterfaceStyle: "automatic",
         runtimeVersion: isTV ? `${version}-tv` : { policy: "appVersion" },
-        updates: isTVDev ? {
+        updates: isTVDev || !otaEnabled ? {
             enabled: false,
         } : {
             enabled: true,
@@ -64,7 +66,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         },
         android: {
             jsEngine: "hermes",
-            versionCode: 23,
+            versionCode: Number(process.env.APP_VERSION_CODE) || 23,
             usesCleartextTraffic: true,
             adaptiveIcon: {
                 foregroundImage: "./src/assets/images/adaptive-icon.png",
@@ -73,7 +75,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
             permissions: [
                 "WRITE_SETTINGS",
             ],
-            package: "app.seanime.tenji",
+            package: process.env.SIGNING_PACKAGE_NAME || "app.seanime.tenji",
         } as any,
         plugins: [
             [
@@ -116,6 +118,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
             "./plugins/withAndroidExternalPlayerQueries",
             "./plugins/withAndroidLanCleartext",
             "./plugins/withAndroidGradleProperties",
+            "./plugins/withAndroidReleaseSigning",
             "./plugins/withLibcppPickFirst",
             "./plugins/withPiPSupport",
             "./plugins/withMPVKitiOS",
@@ -130,6 +133,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         },
         extra: {
             ...config.extra,
+            releaseRepository: process.env.GITHUB_REPOSITORY || "neeppy/seanime-tenji",
             tv: {
                 enabled: isTV,
                 isDev: isTVDev,
