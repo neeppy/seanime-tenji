@@ -13,7 +13,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
 
     return {
         ...config,
-        name: isTV ? "Seanime Tenji" : "Seanime",
+        name: "Anime",
         slug: "seanime-app",
         version,
         orientation: isTV ? "default" : "portrait",
@@ -70,7 +70,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
             usesCleartextTraffic: true,
             adaptiveIcon: {
                 foregroundImage: "./src/assets/images/adaptive-icon.png",
-                backgroundColor: "#171140",
+                backgroundColor: "#fde4ec",
             },
             permissions: [
                 "WRITE_SETTINGS",
