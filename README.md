@@ -4,7 +4,7 @@
 </a>
 </p>
 
-<h1 align="center"><b>Seanime Tenji</b></h1>
+<h1 align="center"><b>neeppy's Seanime Tenji Fork</b><br/></h1>
 
 <p align="center">
 <img src="https://s3.seanime.app/sea/tenji-banner.webp" alt="preview" width="100%"/>
@@ -24,7 +24,7 @@
 
 
 <h5 align="center">
-Consider becoming a sponsor if you like the project! ⭐️
+Consider becoming a sponsor of the <a href="https://github.com/5rahim/seanime-tenji">original project</a> if you like it! ⭐️
 </h5>
 
 ## About
