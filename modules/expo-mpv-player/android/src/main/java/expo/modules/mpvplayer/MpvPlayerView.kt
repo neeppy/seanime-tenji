@@ -12,12 +12,12 @@ package expo.modules.mpvplayer
 
 import android.content.Context
 import android.graphics.Color
+import android.graphics.Region
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.SurfaceHolder
 import android.view.SurfaceView
-import android.view.View
 import android.view.ViewGroup
 import expo.modules.kotlin.AppContext
 import expo.modules.kotlin.viewevent.EventDispatcher
@@ -98,12 +98,20 @@ class MpvPlayerView(context: Context, appContext: AppContext) : ExpoView(context
         }
     }
 
-    // Don't let the SurfaceView register a transparent region with the window. Android only
-    // recomputes that region on a native layout pass, which React Native view updates don't
-    // trigger: after leaving PiP with the controls hidden, the region covered almost the whole
-    // window, so controls drawn later were never composited (invisible but still focusable).
-    // The SurfaceView still punches its hole when drawing; the region is only an optimization.
-    override fun requestTransparentRegion(child: View?) = Unit
+    // Keep the SurfaceView out of the window's transparent region. Android only recomputes that
+    // region on a native layout pass, which React Native view updates don't trigger: after leaving
+    // PiP with the controls hidden, the region covered almost the whole window, so controls drawn
+    // later were never composited (invisible but still focusable). The SurfaceView's transparent
+    // region request still propagates, which keeps the window translucent so the hole it punches
+    // when drawing shows the video; here we only stop it from adding its area to the region.
+    override fun gatherTransparentRegion(region: Region?): Boolean {
+        if (region != null) {
+            val location = IntArray(2)
+            getLocationInWindow(location)
+            region.op(location[0], location[1], location[0] + width, location[1] + height, Region.Op.DIFFERENCE)
+        }
+        return true
+    }
 
     override fun surfaceCreated(holder: SurfaceHolder) {
         surfaceReady = true
