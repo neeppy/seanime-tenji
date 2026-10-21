@@ -131,10 +131,21 @@ export interface PlayerPanelOverlayProps {
     onLockScreen?: () => void
 }
 
+const PANEL_CONTENT_PADDING_TOP = 14
+
 export function PlayerPanelOverlay(props: PlayerPanelOverlayProps) {
     const { panel, onNavigate, onClose, insets, state, prefs, updatePrefs } = props
     const meta = PANEL_META[panel]
     const backPanel = getBackPanel(panel)
+    const scrollRef = React.useRef<ScrollView>(null)
+
+    // rowTop is relative to the panel content, which starts below the scroll padding
+    const centerInScroll = (rowTop: number, rowHeight: number) => {
+        scrollRef.current?.getNativeScrollRef()?.measure((_x, _y, _width, viewportHeight) => {
+            const y = PANEL_CONTENT_PADDING_TOP + rowTop - (viewportHeight - rowHeight) / 2
+            scrollRef.current?.scrollTo({ y: Math.max(0, y), animated: false })
+        })
+    }
 
     return (
         <View className="absolute inset-0 z-[100]" style={{ zIndex: 100 }}>
@@ -179,8 +190,9 @@ export function PlayerPanelOverlay(props: PlayerPanelOverlayProps) {
                 </View>
 
                 <ScrollView
+                    ref={scrollRef}
                     showsVerticalScrollIndicator={false}
-                    contentContainerStyle={{ paddingHorizontal: 14, paddingTop: 14, paddingBottom: 24 }}
+                    contentContainerStyle={{ paddingHorizontal: 14, paddingTop: PANEL_CONTENT_PADDING_TOP, paddingBottom: 24 }}
                     keyboardShouldPersistTaps="handled"
                 >
                     {panel === "main" && (
@@ -202,6 +214,7 @@ export function PlayerPanelOverlay(props: PlayerPanelOverlayProps) {
                             episodes={props.episodes ?? []}
                             currentEpisodeNumber={props.currentEpisodeNumber}
                             onSelect={(ep: Anime_Episode) => { props.onPlayEpisode?.(ep) }}
+                            onCurrentEpisodeLayout={centerInScroll}
                         />
                     )}
                     {panel === "audio-subtitles" && (
@@ -1329,10 +1342,12 @@ function EpisodesListContent({
     episodes,
     currentEpisodeNumber,
     onSelect,
+    onCurrentEpisodeLayout,
 }: {
     episodes: Anime_Episode[]
     currentEpisodeNumber?: number
     onSelect: (ep: Anime_Episode) => void
+    onCurrentEpisodeLayout?: (top: number, height: number) => void
 }) {
     if (episodes.length === 0) {
         return (
@@ -1347,31 +1362,38 @@ function EpisodesListContent({
             {episodes.map((ep) => {
                 const isCurrent = ep.episodeNumber === currentEpisodeNumber
                 return (
-                    <PanelSelectableRow
+                    <View
                         key={ep.episodeNumber}
-                        onPress={() => onSelect(ep)}
-                        disabled={isCurrent}
-                        active={isCurrent}
-                        className="rounded-lg px-2 py-2.5"
+                        // Open on the episode being played (long series can have 1000+ episodes)
+                        onLayout={isCurrent
+                            ? (e) => onCurrentEpisodeLayout?.(e.nativeEvent.layout.y, e.nativeEvent.layout.height)
+                            : undefined}
                     >
-                                <Text className={cn("w-8 text-center text-sm font-bold", isCurrent ? "text-player-text" : "text-white/35")}>
-                                    {ep.episodeNumber}
-                                </Text>
-                                <View className={cn("h-5 w-px", isCurrent ? "bg-player-text/25" : "bg-white/10")} />
-                                <View className="min-w-0 flex-1">
-                                    <Text className={cn("text-sm text-white/75", isCurrent && "font-semibold text-white")} numberOfLines={1}>
-                                        {ep.displayTitle}
+                        <PanelSelectableRow
+                            onPress={() => onSelect(ep)}
+                            disabled={isCurrent}
+                            active={isCurrent}
+                            className="rounded-lg px-2 py-2.5"
+                        >
+                                    <Text className={cn("w-8 text-center text-sm font-bold", isCurrent ? "text-player-text" : "text-white/35")}>
+                                        {ep.episodeNumber}
                                     </Text>
-                                    {ep.episodeTitle ? (
-                                        <Text className={cn("mt-0.5 text-xs text-white/30", isCurrent && "text-white/50")} numberOfLines={1}>
-                                            {ep.episodeTitle}
+                                    <View className={cn("h-5 w-px", isCurrent ? "bg-player-text/25" : "bg-white/10")} />
+                                    <View className="min-w-0 flex-1">
+                                        <Text className={cn("text-sm text-white/75", isCurrent && "font-semibold text-white")} numberOfLines={1}>
+                                            {ep.displayTitle}
                                         </Text>
-                                    ) : null}
-                                </View>
-                                <View className="flex-row items-center gap-1">
-                                    {isCurrent && <Play size={11} color={BRAND_ACCENT} fill={BRAND_ACCENT} />}
-                                </View>
-                    </PanelSelectableRow>
+                                        {ep.episodeTitle ? (
+                                            <Text className={cn("mt-0.5 text-xs text-white/30", isCurrent && "text-white/50")} numberOfLines={1}>
+                                                {ep.episodeTitle}
+                                            </Text>
+                                        ) : null}
+                                    </View>
+                                    <View className="flex-row items-center gap-1">
+                                        {isCurrent && <Play size={11} color={BRAND_ACCENT} fill={BRAND_ACCENT} />}
+                                    </View>
+                        </PanelSelectableRow>
+                    </View>
                 )
             })}
         </View>

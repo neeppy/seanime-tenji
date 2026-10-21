@@ -444,6 +444,10 @@ function ButtonList({ rows, preferred }: { rows: Row[]; preferred: boolean }) {
 
 function Episodes(props: Props & { preferred: boolean }) {
     const episodes = props.episodes ?? []
+    const listRef = React.useRef<FlatList<Anime_Episode>>(null)
+    const centeredRef = React.useRef(false)
+    // Open on the episode being played (long series can have 1000+ episodes)
+    const currentIndex = Math.max(0, episodes.findIndex(episode => episode.episodeNumber === props.currentEpisodeNumber))
 
     if (episodes.length === 0) {
         return <Empty text="No episodes available" />
@@ -451,8 +455,19 @@ function Episodes(props: Props & { preferred: boolean }) {
 
     return (
         <FlatList
+            ref={listRef}
             data={episodes}
             keyExtractor={(episode) => `${episode.episodeNumber}`}
+            // Renders from the current episode and scrolls it to the top once laid out
+            initialScrollIndex={currentIndex > 0 ? currentIndex : undefined}
+            onContentSizeChange={() => {
+                if (centeredRef.current || currentIndex === 0) return
+                centeredRef.current = true
+                listRef.current?.scrollToIndex({ index: currentIndex, viewPosition: 0.5, animated: false })
+            }}
+            onScrollToIndexFailed={(info) => {
+                listRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: false })
+            }}
             contentContainerStyle={{
                 padding: tvSize(30),
                 paddingTop: tvSize(18),
@@ -470,7 +485,7 @@ function Episodes(props: Props & { preferred: boolean }) {
                         icon={current
                             ? <Check size={ICON} color={BRAND_ACCENT} />
                             : <List size={ICON} color="#ffffff" />}
-                        preferred={props.preferred && index === 0}
+                        preferred={props.preferred && index === currentIndex}
                         active={current}
                         onPress={() => props.onPlayEpisode?.(item)}
                     />
