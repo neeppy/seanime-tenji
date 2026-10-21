@@ -319,6 +319,7 @@ type PanelRowProps = {
     icon?: React.ReactNode
     active?: boolean
     preferred?: boolean
+    badge?: string
     onPress: () => void
 }
 
@@ -327,6 +328,7 @@ function TVPanelRow({
     detail,
     icon,
     active,
+    badge,
     preferred,
     onPress,
 }: PanelRowProps) {
@@ -395,6 +397,20 @@ function TVPanelRow({
                         </Text>
                     ) : null}
                 </View>
+                {badge ? (
+                    <View
+                        style={{
+                            borderRadius: tvSize(7),
+                            paddingHorizontal: tvSize(9),
+                            paddingVertical: tvSize(5),
+                            backgroundColor: "rgba(234,179,8,0.9)",
+                        }}
+                    >
+                        <Text className="font-bold text-black" style={{ fontSize: tvSize(14) }}>
+                            {badge}
+                        </Text>
+                    </View>
+                ) : null}
             </Animated.View>
         </Pressable>
     )
@@ -487,6 +503,7 @@ function Episodes(props: Props & { preferred: boolean }) {
                             : <List size={ICON} color="#ffffff" />}
                         preferred={props.preferred && index === currentIndex}
                         active={current}
+                        badge={item.episodeMetadata?.isFiller ? "FILLER" : undefined}
                         onPress={() => props.onPlayEpisode?.(item)}
                     />
                 )

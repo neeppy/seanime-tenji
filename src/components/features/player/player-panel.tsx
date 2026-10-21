@@ -1390,6 +1390,11 @@ function EpisodesListContent({
                                         ) : null}
                                     </View>
                                     <View className="flex-row items-center gap-1">
+                                        {ep.episodeMetadata?.isFiller && (
+                                            <View className="rounded bg-yellow-500/80 px-1.5 py-0.5">
+                                                <Text className="text-xs font-bold text-black">FILLER</Text>
+                                            </View>
+                                        )}
                                         {isCurrent && <Play size={11} color={BRAND_ACCENT} fill={BRAND_ACCENT} />}
                                     </View>
                         </PanelSelectableRow>
