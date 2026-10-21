@@ -70,6 +70,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
             usesCleartextTraffic: true,
             adaptiveIcon: {
                 foregroundImage: "./src/assets/images/adaptive-icon.png",
+                // Alternatives: "#1c1733" (dark navy), "#ffffff" (white), "#171140" (original purple)
                 backgroundColor: "#fde4ec",
             },
             permissions: [
