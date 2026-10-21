@@ -320,6 +320,8 @@ type PanelRowProps = {
     active?: boolean
     preferred?: boolean
     badge?: string
+    /** fixed row height instead of the default minimum, for lists that need exact item offsets */
+    height?: number
     onPress: () => void
 }
 
@@ -330,6 +332,7 @@ function TVPanelRow({
     active,
     badge,
     preferred,
+    height,
     onPress,
 }: PanelRowProps) {
     const focus = useTVFocus(1.015)
@@ -348,7 +351,7 @@ function TVPanelRow({
                 style={[
                     focus.style,
                     {
-                        minHeight: tvSize(72),
+                        ...(height != null ? { height } : { minHeight: tvSize(72) }),
                         borderRadius: tvSize(13),
                         borderWidth: tvSize(2),
                         borderColor: focus.focused ? "#ffffff" : "transparent",
@@ -458,12 +461,27 @@ function ButtonList({ rows, preferred }: { rows: Row[]; preferred: boolean }) {
     )
 }
 
+const EPISODE_ROW_HEIGHT = tvSize(88)
+// TVPanelRow wraps the row in tvSize(5) padding
+const EPISODE_ITEM_LENGTH = EPISODE_ROW_HEIGHT + tvSize(5) * 2
+const EPISODE_LIST_PADDING_TOP = tvSize(18)
+
 function Episodes(props: Props & { preferred: boolean }) {
     const episodes = props.episodes ?? []
     const listRef = React.useRef<FlatList<Anime_Episode>>(null)
+    const listHeightRef = React.useRef(0)
+    const contentReadyRef = React.useRef(false)
     const centeredRef = React.useRef(false)
     // Open on the episode being played (long series can have 1000+ episodes)
     const currentIndex = Math.max(0, episodes.findIndex(episode => episode.episodeNumber === props.currentEpisodeNumber))
+
+    // Runs once both the list height and its content are known, i.e. after FlatList's own initialScrollIndex scroll
+    const centerCurrentEpisode = () => {
+        if (centeredRef.current || currentIndex === 0 || !contentReadyRef.current || listHeightRef.current === 0) return
+        centeredRef.current = true
+        const offset = EPISODE_LIST_PADDING_TOP + currentIndex * EPISODE_ITEM_LENGTH - (listHeightRef.current - EPISODE_ITEM_LENGTH) / 2
+        listRef.current?.scrollToOffset({ offset: Math.max(0, offset), animated: false })
+    }
 
     if (episodes.length === 0) {
         return <Empty text="No episodes available" />
@@ -474,19 +492,24 @@ function Episodes(props: Props & { preferred: boolean }) {
             ref={listRef}
             data={episodes}
             keyExtractor={(episode) => `${episode.episodeNumber}`}
-            // Renders from the current episode and scrolls it to the top once laid out
+            // Fixed row heights let the list place the current episode without measuring the rows before it
+            getItemLayout={(_, index) => ({
+                length: EPISODE_ITEM_LENGTH,
+                offset: EPISODE_LIST_PADDING_TOP + index * EPISODE_ITEM_LENGTH,
+                index,
+            })}
             initialScrollIndex={currentIndex > 0 ? currentIndex : undefined}
-            onContentSizeChange={() => {
-                if (centeredRef.current || currentIndex === 0) return
-                centeredRef.current = true
-                listRef.current?.scrollToIndex({ index: currentIndex, viewPosition: 0.5, animated: false })
+            onLayout={(e) => {
+                listHeightRef.current = e.nativeEvent.layout.height
+                centerCurrentEpisode()
             }}
-            onScrollToIndexFailed={(info) => {
-                listRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: false })
+            onContentSizeChange={() => {
+                contentReadyRef.current = true
+                centerCurrentEpisode()
             }}
             contentContainerStyle={{
                 padding: tvSize(30),
-                paddingTop: tvSize(18),
+                paddingTop: EPISODE_LIST_PADDING_TOP,
                 paddingBottom: tvSize(60),
             }}
             renderItem={({ item, index }) => {
@@ -504,6 +527,7 @@ function Episodes(props: Props & { preferred: boolean }) {
                         preferred={props.preferred && index === currentIndex}
                         active={current}
                         badge={item.episodeMetadata?.isFiller ? "FILLER" : undefined}
+                        height={EPISODE_ROW_HEIGHT}
                         onPress={() => props.onPlayEpisode?.(item)}
                     />
                 )

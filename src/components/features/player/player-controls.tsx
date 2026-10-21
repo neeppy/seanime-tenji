@@ -233,10 +233,17 @@ export function ControlsOverlay(props: ControlsOverlayProps) {
                             {source?.media?.title?.userPreferred ?? source?.media?.title?.english ?? ""}
                         </Text>
                         {source?.episode && (
-                            <Text className="mt-0.5 text-sm text-white/70" numberOfLines={1}>
-                                {source.episode.displayTitle +
-                                    (source.episode.episodeTitle ? " \u2014 " + source.episode.episodeTitle : "")}
-                            </Text>
+                            <View className="mt-0.5 flex-row items-center gap-2">
+                                <Text className="shrink text-sm text-white/70" numberOfLines={1}>
+                                    {source.episode.displayTitle +
+                                        (source.episode.episodeTitle ? " \u2014 " + source.episode.episodeTitle : "")}
+                                </Text>
+                                {source.episode.episodeMetadata?.isFiller && (
+                                    <View className="rounded bg-white/20 px-1.5 py-0.5">
+                                        <Text className="text-xs font-bold text-white/80">FILLER</Text>
+                                    </View>
+                                )}
+                            </View>
                         )}
                     </View>
 

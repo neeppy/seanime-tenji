@@ -377,6 +377,8 @@ export function TVPlayerControls({
     const episode = source?.episode
         ? source.episode.displayTitle
         : `Episode ${source?.episodeNumber ?? ""}`.trim()
+    const isFiller = (source?.episode ?? source?.episodes?.find(ep => ep.episodeNumber === source?.episodeNumber))
+        ?.episodeMetadata?.isFiller
     const chapter = getChapter(chapters, displayTime)
 
     function run(action: () => void) {
@@ -420,14 +422,30 @@ export function TVPlayerControls({
                 >
                     {title}
                 </Text>
-                <Text
-                    className="font-medium text-white/60"
-                    style={{ fontSize: tvSize(20), maxWidth: "75%" }}
-                    numberOfLines={1}
-                    ellipsizeMode="tail"
-                >
-                    {episode}
-                </Text>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: tvSize(10), maxWidth: "75%" }}>
+                    <Text
+                        className="font-medium text-white/60"
+                        style={{ fontSize: tvSize(20), flexShrink: 1 }}
+                        numberOfLines={1}
+                        ellipsizeMode="tail"
+                    >
+                        {episode}
+                    </Text>
+                    {isFiller ? (
+                        <View
+                            style={{
+                                borderRadius: tvSize(7),
+                                paddingHorizontal: tvSize(9),
+                                paddingVertical: tvSize(4),
+                                backgroundColor: "rgba(255,255,255,0.18)",
+                            }}
+                        >
+                            <Text className="font-bold text-white/80" style={{ fontSize: tvSize(14) }}>
+                                FILLER
+                            </Text>
+                        </View>
+                    ) : null}
+                </View>
             </View>
 
             <View
