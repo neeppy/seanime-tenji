@@ -28,7 +28,6 @@ concurrency:
 env:
   CI: "1"
   EXPO_NO_TELEMETRY: "1"
-  ANDROID_ARCHITECTURES: arm64-v8a
 
 jobs:
   check:
@@ -63,11 +62,15 @@ jobs:
           - variant: phone
             expo-tv: "0"
             prefix: seanime-tenji
+            architectures: arm64-v8a
+          # Google TV Streamer (like many TV boxes) runs a 32-bit-only userspace on a 64-bit CPU
           - variant: tv
             expo-tv: "1"
             prefix: seanime-tenji-tv
+            architectures: armeabi-v7a
     env:
       EXPO_TV: ${{ matrix.expo-tv }}
+      ANDROID_ARCHITECTURES: ${{ matrix.architectures }}
       SIGNING_PACKAGE_NAME: ${{ secrets.SIGNING_PACKAGE_NAME }}
     steps:
       - uses: actions/checkout@v7
