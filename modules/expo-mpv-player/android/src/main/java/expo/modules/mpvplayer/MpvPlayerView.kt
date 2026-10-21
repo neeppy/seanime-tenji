@@ -17,6 +17,7 @@ import android.os.Looper
 import android.util.Log
 import android.view.SurfaceHolder
 import android.view.SurfaceView
+import android.view.View
 import android.view.ViewGroup
 import expo.modules.kotlin.AppContext
 import expo.modules.kotlin.viewevent.EventDispatcher
@@ -96,6 +97,13 @@ class MpvPlayerView(context: Context, appContext: AppContext) : ExpoView(context
             it.delegate = this
         }
     }
+
+    // Don't let the SurfaceView register a transparent region with the window. Android only
+    // recomputes that region on a native layout pass, which React Native view updates don't
+    // trigger: after leaving PiP with the controls hidden, the region covered almost the whole
+    // window, so controls drawn later were never composited (invisible but still focusable).
+    // The SurfaceView still punches its hole when drawing; the region is only an optimization.
+    override fun requestTransparentRegion(child: View?) = Unit
 
     override fun surfaceCreated(holder: SurfaceHolder) {
         surfaceReady = true
