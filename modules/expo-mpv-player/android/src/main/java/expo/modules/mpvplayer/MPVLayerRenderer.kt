@@ -151,20 +151,21 @@ class MPVLayerRenderer(private val context: Context) : MPVLib.EventObserver, MPV
             isTv -> {
                 hwdecResult = MPVLib.setOptionString("hwdec", requestedHwdec)
                 MPVLib.setOptionString("profile", "fast")
-                MPVLib.setOptionString("demuxer-seekable-cache", "no")
                 MPVLib.setOptionString("audio-buffer", "0.5")
             }
             else -> {
                 hwdecResult = MPVLib.setOptionString("hwdec", requestedHwdec)
-                MPVLib.setOptionString("demuxer-seekable-cache", "yes")
             }
         }
 
         // cache & demuxer
         MPVLib.setOptionString("cache", "auto")
-        MPVLib.setOptionString("cache-secs", "10")
+        // seeks that land inside the buffered range skip the network round trip;
+        // 180s of read-ahead covers a recap plus an opening skip
+        MPVLib.setOptionString("demuxer-seekable-cache", "yes")
+        MPVLib.setOptionString("cache-secs", "180")
         MPVLib.setOptionString("cache-pause-initial", "yes")
-        MPVLib.setOptionString("demuxer-max-bytes", if (isTv) "75MiB" else "150MiB")
+        MPVLib.setOptionString("demuxer-max-bytes", "150MiB")
         MPVLib.setOptionString("demuxer-max-back-bytes", if (isTv) "30MiB" else "50MiB")
 
         // progressive streams should still accept range seeks when mpv cannot infer it
