@@ -530,10 +530,10 @@ const Episodes = React.memo(function Episodes(props: EpisodesProps) {
                 index,
             })}
             initialScrollIndex={currentIndex > 0 ? currentIndex : undefined}
-            // About two screens of rows either side instead of the default ten
-            initialNumToRender={12}
+            // One screen of rows either side instead of the default ten; the list opens centered
+            initialNumToRender={10}
             maxToRenderPerBatch={8}
-            windowSize={5}
+            windowSize={3}
             onLayout={(e) => {
                 listHeightRef.current = e.nativeEvent.layout.height
                 centerCurrentEpisode()
