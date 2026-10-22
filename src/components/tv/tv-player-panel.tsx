@@ -43,6 +43,8 @@ type Props = {
     updatePrefs: (prefs: Partial<PlayerPreferences>) => void
     episodes?: Anime_Episode[]
     currentEpisodeNumber?: number
+    /** AniList progress; main episodes up to it are shown as watched. */
+    watchedProgress?: number
     onPlayEpisode?: (episode: Anime_Episode) => void
     videoSources?: Onlinestream_VideoSource[]
     videoSource?: Onlinestream_VideoSource
@@ -121,7 +123,15 @@ function PanelContent(props: Props & { preferred: boolean }) {
         case "main":
             return <Main {...props} />
         case "episodes":
-            return <Episodes {...props} />
+            return (
+                <Episodes
+                    episodes={props.episodes}
+                    currentEpisodeNumber={props.currentEpisodeNumber}
+                    watchedProgress={props.watchedProgress}
+                    onPlayEpisode={props.onPlayEpisode}
+                    preferred={props.preferred}
+                />
+            )
         case "audio-subtitles":
             return <TracksHome {...props} />
         case "speed":
@@ -466,14 +476,23 @@ const EPISODE_ROW_HEIGHT = tvSize(88)
 const EPISODE_ITEM_LENGTH = EPISODE_ROW_HEIGHT + tvSize(5) * 2
 const EPISODE_LIST_PADDING_TOP = tvSize(18)
 
-function Episodes(props: Props & { preferred: boolean }) {
+type EpisodesProps = Pick<Props, "episodes" | "currentEpisodeNumber" | "watchedProgress" | "onPlayEpisode"> & {
+    preferred: boolean
+}
+
+// Memoized with only the props it reads: the panel re-renders on every player tick, and
+// re-rendering hundreds of rows each second makes the list stutter on TV hardware.
+const Episodes = React.memo(function Episodes(props: EpisodesProps) {
     const episodes = props.episodes ?? []
     const listRef = React.useRef<FlatList<Anime_Episode>>(null)
     const listHeightRef = React.useRef(0)
     const contentReadyRef = React.useRef(false)
     const centeredRef = React.useRef(false)
+    const onPlayEpisodeRef = React.useRef(props.onPlayEpisode)
+    onPlayEpisodeRef.current = props.onPlayEpisode
     // Open on the episode being played (long series can have 1000+ episodes)
     const currentIndex = Math.max(0, episodes.findIndex(episode => episode.episodeNumber === props.currentEpisodeNumber))
+    const watchedProgress = props.watchedProgress ?? 0
 
     // Runs once both the list height and its content are known, i.e. after FlatList's own initialScrollIndex scroll
     const centerCurrentEpisode = () => {
@@ -482,6 +501,18 @@ function Episodes(props: Props & { preferred: boolean }) {
         const offset = EPISODE_LIST_PADDING_TOP + currentIndex * EPISODE_ITEM_LENGTH - (listHeightRef.current - EPISODE_ITEM_LENGTH) / 2
         listRef.current?.scrollToOffset({ offset: Math.max(0, offset), animated: false })
     }
+
+    const playEpisode = React.useCallback((episode: Anime_Episode) => onPlayEpisodeRef.current?.(episode), [])
+
+    const renderItem = React.useCallback(({ item, index }: { item: Anime_Episode, index: number }) => (
+        <EpisodeRow
+            episode={item}
+            current={item.episodeNumber === props.currentEpisodeNumber}
+            watched={item.type === "main" && item.progressNumber > 0 && item.progressNumber <= watchedProgress}
+            preferred={props.preferred && index === currentIndex}
+            onPlay={playEpisode}
+        />
+    ), [currentIndex, playEpisode, props.currentEpisodeNumber, props.preferred, watchedProgress])
 
     if (episodes.length === 0) {
         return <Empty text="No episodes available" />
@@ -499,6 +530,10 @@ function Episodes(props: Props & { preferred: boolean }) {
                 index,
             })}
             initialScrollIndex={currentIndex > 0 ? currentIndex : undefined}
+            // About two screens of rows either side instead of the default ten
+            initialNumToRender={12}
+            maxToRenderPerBatch={8}
+            windowSize={5}
             onLayout={(e) => {
                 listHeightRef.current = e.nativeEvent.layout.height
                 centerCurrentEpisode()
@@ -512,29 +547,44 @@ function Episodes(props: Props & { preferred: boolean }) {
                 paddingTop: EPISODE_LIST_PADDING_TOP,
                 paddingBottom: tvSize(60),
             }}
-            renderItem={({ item, index }) => {
-                const current = item.episodeNumber === props.currentEpisodeNumber
-                return (
-                    <TVPanelRow
-                        label={item.displayTitle || `Episode ${item.episodeNumber}`}
-                        detail={[
-                            current ? "Now playing" : "",
-                            item.episodeTitle ?? "",
-                        ].filter(Boolean).join(" · ")}
-                        icon={current
-                            ? <Check size={ICON} color={BRAND_ACCENT} />
-                            : <List size={ICON} color="#ffffff" />}
-                        preferred={props.preferred && index === currentIndex}
-                        active={current}
-                        badge={item.episodeMetadata?.isFiller ? "FILLER" : undefined}
-                        height={EPISODE_ROW_HEIGHT}
-                        onPress={() => props.onPlayEpisode?.(item)}
-                    />
-                )
-            }}
+            renderItem={renderItem}
         />
     )
-}
+})
+
+const EpisodeRow = React.memo(function EpisodeRow({
+    episode,
+    current,
+    watched,
+    preferred,
+    onPlay,
+}: {
+    episode: Anime_Episode
+    current: boolean
+    watched: boolean
+    preferred: boolean
+    onPlay: (episode: Anime_Episode) => void
+}) {
+    return (
+        <TVPanelRow
+            label={episode.displayTitle || `Episode ${episode.episodeNumber}`}
+            detail={[
+                current ? "Now playing" : "",
+                episode.episodeTitle ?? "",
+            ].filter(Boolean).join(" · ")}
+            icon={current
+                ? <Check size={ICON} color={BRAND_ACCENT} />
+                : watched
+                    ? <Check size={ICON} color="rgba(255,255,255,0.55)" />
+                    : <List size={ICON} color="#ffffff" />}
+            preferred={preferred}
+            active={current}
+            badge={episode.episodeMetadata?.isFiller ? "FILLER" : undefined}
+            height={EPISODE_ROW_HEIGHT}
+            onPress={() => onPlay(episode)}
+        />
+    )
+})
 
 function ChoiceList<T extends number>({
     values,

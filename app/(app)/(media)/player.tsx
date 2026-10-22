@@ -1460,6 +1460,7 @@ function PlayerScreenInner() {
                             onToggleAutoSkipOpEd={() => updatePrefs({ autoSkipOpEd: !prefs.autoSkipOpEd })}
                             episodes={source?.episodes}
                             currentEpisodeNumber={source?.episodeNumber}
+                            watchedProgress={source?.entryListData?.progress ?? undefined}
                             onPlayEpisode={handleEpisodeSelect}
                             videoSources={source?.onlineSources}
                             videoSource={source?.onlineSource}
