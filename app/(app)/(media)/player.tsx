@@ -765,14 +765,15 @@ function PlayerScreenInner() {
         if (event.eventKeyAction === 0) return
 
         if (!controls.controlsVisible) {
+            // left/right keep seeking while the controls stay hidden; up/down/select open them
             if (event.eventType === "left") {
                 player.seekRelative(-prefs.buttonSeekSec)
-                controls.showControls()
+                tvLongSeek.flash()
                 return
             }
             if (event.eventType === "right") {
                 player.seekRelative(prefs.buttonSeekSec)
-                controls.showControls()
+                tvLongSeek.flash()
                 return
             }
             if (

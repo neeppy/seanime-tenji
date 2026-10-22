@@ -66,11 +66,23 @@ export function useTVLongSeek({ enabled, seek, touch }: Options) {
         }, TV_LONG_SEEK.intervalMs)
     }, [clear, enabled])
 
+    // Shows the seek bar briefly after a single press seek
+    const flash = React.useCallback(() => {
+        if (!enabled || active.current) return
+
+        if (hide.current !== null) clearTimeout(hide.current)
+        setVisible(true)
+        hide.current = setTimeout(() => {
+            hide.current = null
+            setVisible(false)
+        }, TV_LONG_SEEK.hudMs)
+    }, [enabled])
+
     React.useEffect(() => {
         if (!enabled) clear(true)
     }, [clear, enabled])
 
     React.useEffect(() => () => clear(false), [clear])
 
-    return { start, stop, visible }
+    return { start, stop, flash, visible }
 }
