@@ -35,6 +35,7 @@ type ControlProps = {
     primary?: boolean
     wide?: boolean
     disabled?: boolean
+    focusable?: boolean
     onFocus?: () => void
 }
 
@@ -47,6 +48,7 @@ const TVPlayerControl = React.forwardRef<React.ElementRef<typeof Pressable>, Con
         primary,
         wide,
         disabled,
+        focusable,
         onFocus,
     }, ref) => {
         const focus = useTVFocus(1.04)
@@ -55,7 +57,8 @@ const TVPlayerControl = React.forwardRef<React.ElementRef<typeof Pressable>, Con
                 ref={ref}
                 onPress={onPress}
                 disabled={disabled}
-                hasTVPreferredFocus={preferred}
+                focusable={focusable}
+                hasTVPreferredFocus={preferred && focusable !== false}
                 onFocus={() => {
                     focus.focus()
                     onFocus?.()
@@ -116,15 +119,18 @@ TVPlayerControl.displayName = "TVPlayerControl"
 function TVPlayerExit({
     onPress,
     onFocus,
+    focusable,
 }: {
     onPress: () => void
     onFocus: () => void
+    focusable?: boolean
 }) {
     const focus = useTVFocus(1.04)
 
     return (
         <Pressable
             onPress={onPress}
+            focusable={focusable}
             onFocus={() => {
                 focus.focus()
                 onFocus()
@@ -222,33 +228,13 @@ export function TVPlayerControls({
     const returnRef = React.useRef<"episodes" | "tracks" | "settings" | null>(null)
     const [playTarget, setPlayTarget] = React.useState<React.ElementRef<typeof Pressable> | null>(null)
     const hiddenRef = React.useRef<React.ElementRef<typeof Pressable>>(null)
-    const [barFocused, setBarFocused] = React.useState(false)
-    const segments = React.useMemo(() => getSegments(chapters, state.duration), [chapters, state.duration])
     const bindPlay = React.useCallback((target: React.ElementRef<typeof Pressable> | null) => {
         playRef.current = target
         setPlayTarget(target)
     }, [])
 
-    useTVEventHandler((event) => {
-        if (!visible || !barFocused || !event) return
-        if (event.eventKeyAction === 0) return
-
-        if (event.eventType === "left") {
-            onSeekRelative(-seekSec)
-            onControlFocus()
-            return
-        }
-        if (event.eventType === "right") {
-            onSeekRelative(seekSec)
-            onControlFocus()
-        }
-    })
-
     React.useEffect(() => {
-        if (!visible) {
-            setBarFocused(false)
-            if (focusWhenHidden) returnRef.current = null
-        }
+        if (!visible && focusWhenHidden) returnRef.current = null
 
         let frame = 0
         let tries = 0
@@ -291,85 +277,205 @@ export function TVPlayerControls({
         }
     }, [focusWhenHidden, visible])
 
-    if (!visible) {
-        if (!focusWhenHidden && !longSeekVisible) return null
+    // The overlay stays mounted while hidden so showing it is a style change rather than a
+    // full rebuild. Its props are frozen while hidden so playback progress doesn't re-render it.
+    const liveProps: OverlayProps = {
+        source,
+        state,
+        chapters,
+        displayTime,
+        progress,
+        buffered,
+        seekSec,
+        canPlayNext,
+        canShowEpisodes,
+        skipLabel,
+        onSkip,
+        onTogglePlayPause,
+        onSeekRelative,
+        onPlayNext,
+        onOpenEpisodes,
+        onOpenTracks,
+        onOpenSettings,
+        onExit,
+        onControlFocus,
+        onControlAction,
+        playTarget,
+        bindPlay,
+        episodesRef,
+        tracksRef,
+        settingsRef,
+        returnRef,
+    }
+    const overlayPropsRef = React.useRef(liveProps)
+    if (visible) overlayPropsRef.current = liveProps
 
-        return (
-            <>
-                {focusWhenHidden ? (
-                    <Pressable
-                        ref={hiddenRef}
-                        hasTVPreferredFocus
-                        onPress={onShowControls}
-                        accessibilityLabel="Show player controls"
-                        style={{
-                            position: "absolute",
-                            left: 0,
-                            top: 0,
-                            width: 1,
-                            height: 1,
-                            opacity: 0,
-                        }}
-                    />
-                ) : null}
-                {longSeekVisible ? (
+    const hiddenLayer = visible ? null : (
+        <>
+            {focusWhenHidden ? (
+                <Pressable
+                    ref={hiddenRef}
+                    hasTVPreferredFocus
+                    onPress={onShowControls}
+                    accessibilityLabel="Show player controls"
+                    style={{
+                        position: "absolute",
+                        left: 0,
+                        top: 0,
+                        width: 1,
+                        height: 1,
+                        opacity: 0,
+                    }}
+                />
+            ) : null}
+            {longSeekVisible ? (
+                <View
+                    pointerEvents="none"
+                    style={{
+                        position: "absolute",
+                        left: tvSize(68),
+                        right: tvSize(68),
+                        bottom: tvSize(54),
+                        zIndex: 40,
+                        gap: tvSize(9),
+                    }}
+                >
+                    <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                        <Text
+                            className="font-bold text-white"
+                            style={{ fontSize: tvSize(19), fontVariant: ["tabular-nums"] }}
+                        >
+                            {formatTime(displayTime)}
+                        </Text>
+                        <Text
+                            className="font-semibold text-white/60"
+                            style={{ fontSize: tvSize(18), fontVariant: ["tabular-nums"] }}
+                        >
+                            {formatTime(state.duration)}
+                        </Text>
+                    </View>
                     <View
-                        pointerEvents="none"
                         style={{
-                            position: "absolute",
-                            left: tvSize(68),
-                            right: tvSize(68),
-                            bottom: tvSize(54),
-                            zIndex: 40,
-                            gap: tvSize(9),
+                            height: tvSize(9),
+                            borderRadius: tvSize(5),
+                            backgroundColor: "rgba(255,255,255,0.16)",
+                            overflow: "hidden",
                         }}
                     >
-                        <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                            <Text
-                                className="font-bold text-white"
-                                style={{ fontSize: tvSize(19), fontVariant: ["tabular-nums"] }}
-                            >
-                                {formatTime(displayTime)}
-                            </Text>
-                            <Text
-                                className="font-semibold text-white/60"
-                                style={{ fontSize: tvSize(18), fontVariant: ["tabular-nums"] }}
-                            >
-                                {formatTime(state.duration)}
-                            </Text>
-                        </View>
                         <View
                             style={{
-                                height: tvSize(9),
-                                borderRadius: tvSize(5),
-                                backgroundColor: "rgba(255,255,255,0.16)",
-                                overflow: "hidden",
+                                position: "absolute",
+                                left: 0,
+                                top: 0,
+                                bottom: 0,
+                                width: `${Math.max(0, Math.min(1, buffered)) * 100}%`,
+                                backgroundColor: BUFFER_FILL,
                             }}
-                        >
-                            <View
-                                style={{
-                                    position: "absolute",
-                                    left: 0,
-                                    top: 0,
-                                    bottom: 0,
-                                    width: `${Math.max(0, Math.min(1, buffered)) * 100}%`,
-                                    backgroundColor: BUFFER_FILL,
-                                }}
-                            />
-                            <View
-                                style={{
-                                    width: `${Math.max(0, Math.min(1, progress)) * 100}%`,
-                                    height: "100%",
-                                    borderRadius: tvSize(5),
-                                    backgroundColor: "#ffffff",
-                                }}
-                            />
-                        </View>
+                        />
+                        <View
+                            style={{
+                                width: `${Math.max(0, Math.min(1, progress)) * 100}%`,
+                                height: "100%",
+                                borderRadius: tvSize(5),
+                                backgroundColor: "#ffffff",
+                            }}
+                        />
                     </View>
-                ) : null}
-            </>
-        )
-    }
+                </View>
+            ) : null}
+        </>
+    )
+
+    return (
+        <>
+            <ControlsOverlay {...overlayPropsRef.current} visible={visible} />
+            {hiddenLayer}
+        </>
+    )
+}
+
+type PressableRef = React.ElementRef<typeof Pressable>
+
+type OverlayProps = Pick<Props,
+    | "source"
+    | "state"
+    | "chapters"
+    | "displayTime"
+    | "progress"
+    | "buffered"
+    | "seekSec"
+    | "canPlayNext"
+    | "canShowEpisodes"
+    | "skipLabel"
+    | "onSkip"
+    | "onTogglePlayPause"
+    | "onSeekRelative"
+    | "onPlayNext"
+    | "onOpenEpisodes"
+    | "onOpenTracks"
+    | "onOpenSettings"
+    | "onExit"
+    | "onControlFocus"
+    | "onControlAction"
+> & {
+    playTarget: PressableRef | null
+    bindPlay: (target: PressableRef | null) => void
+    episodesRef: React.RefObject<PressableRef | null>
+    tracksRef: React.RefObject<PressableRef | null>
+    settingsRef: React.RefObject<PressableRef | null>
+    returnRef: React.RefObject<"episodes" | "tracks" | "settings" | null>
+}
+
+const ControlsOverlay = React.memo(function ControlsOverlay({
+    visible,
+    source,
+    state,
+    chapters,
+    displayTime,
+    progress,
+    buffered,
+    seekSec,
+    canPlayNext,
+    canShowEpisodes,
+    skipLabel,
+    onSkip,
+    onTogglePlayPause,
+    onSeekRelative,
+    onPlayNext,
+    onOpenEpisodes,
+    onOpenTracks,
+    onOpenSettings,
+    onExit,
+    onControlFocus,
+    onControlAction,
+    playTarget,
+    bindPlay,
+    episodesRef,
+    tracksRef,
+    settingsRef,
+    returnRef,
+}: OverlayProps & { visible: boolean }) {
+    const [barFocused, setBarFocused] = React.useState(false)
+    const segments = React.useMemo(() => getSegments(chapters, state.duration), [chapters, state.duration])
+
+    React.useEffect(() => {
+        if (!visible) setBarFocused(false)
+    }, [visible])
+
+    useTVEventHandler((event) => {
+        if (!visible || !barFocused || !event) return
+        if (event.eventKeyAction === 0) return
+
+        if (event.eventType === "left") {
+            onSeekRelative(-seekSec)
+            onControlFocus()
+            return
+        }
+        if (event.eventType === "right") {
+            onSeekRelative(seekSec)
+            onControlFocus()
+        }
+    })
 
     const title = source?.media?.title?.userPreferred
         ?? source?.media?.title?.english
@@ -388,11 +494,12 @@ export function TVPlayerControls({
 
     return (
         <View
-            pointerEvents="box-none"
+            pointerEvents={visible ? "box-none" : "none"}
             style={{
                 position: "absolute",
                 inset: 0,
                 zIndex: 40,
+                opacity: visible ? 1 : 0,
             }}
         >
             <View
@@ -403,7 +510,7 @@ export function TVPlayerControls({
                     backgroundColor: "rgba(0,0,0,0.45)",
                 }}
             />
-            <TVPlayerExit onPress={onExit} onFocus={onControlFocus} />
+            <TVPlayerExit onPress={onExit} onFocus={onControlFocus} focusable={visible} />
             <View
                 pointerEvents="none"
                 style={{
@@ -484,6 +591,7 @@ export function TVPlayerControls({
                     <TVFocusGuideView trapFocusLeft trapFocusRight>
                         <Pressable
                             onPress={onTogglePlayPause}
+                            focusable={visible}
                             onFocus={() => {
                                 setBarFocused(true)
                                 onControlFocus()
@@ -585,8 +693,8 @@ export function TVPlayerControls({
                 </View>
 
                 <TVFocusGuideView
-                    autoFocus
-                    destinations={playTarget ? [playTarget] : undefined}
+                    autoFocus={visible}
+                    destinations={visible && playTarget ? [playTarget] : []}
                     trapFocusLeft
                     trapFocusRight
                     style={{
@@ -600,12 +708,14 @@ export function TVPlayerControls({
                 >
                     <View style={{ flexDirection: "row", alignItems: "center", gap: tvSize(12) }}>
                         <TVPlayerControl
+                            focusable={visible}
                             label={`${seekSec}s`}
                             icon={(color) => <RotateCcw size={tvSize(23)} color={color} />}
                             onPress={() => run(() => onSeekRelative(-seekSec))}
                             onFocus={onControlFocus}
                         />
                         <TVPlayerControl
+                            focusable={visible}
                             ref={bindPlay}
                             label={state.paused ? "Play" : "Pause"}
                             icon={(color) => state.paused
@@ -617,12 +727,14 @@ export function TVPlayerControls({
                             onFocus={onControlFocus}
                         />
                         <TVPlayerControl
+                            focusable={visible}
                             label={`${seekSec}s`}
                             icon={(color) => <RotateCw size={tvSize(23)} color={color} />}
                             onPress={() => run(() => onSeekRelative(seekSec))}
                             onFocus={onControlFocus}
                         />
                         <TVPlayerControl
+                            focusable={visible}
                             label="Next"
                             icon={(color) => <SkipForward size={tvSize(23)} color={color} />}
                             disabled={!canPlayNext}
@@ -631,6 +743,7 @@ export function TVPlayerControls({
                         />
                         {skipLabel && onSkip ? (
                             <TVPlayerControl
+                                focusable={visible}
                                 label={skipLabel}
                                 icon={(color) => <SkipForward size={tvSize(22)} color={color} />}
                                 onPress={() => run(onSkip)}
@@ -642,6 +755,7 @@ export function TVPlayerControls({
                     <View style={{ flexDirection: "row", alignItems: "center", gap: tvSize(12) }}>
                         {canShowEpisodes ? (
                             <TVPlayerControl
+                                focusable={visible}
                                 ref={episodesRef}
                                 label="Episodes"
                                 icon={(color) => <List size={tvSize(22)} color={color} />}
@@ -653,6 +767,7 @@ export function TVPlayerControls({
                             />
                         ) : null}
                         <TVPlayerControl
+                            focusable={visible}
                             ref={tracksRef}
                             label="Audio & subtitles"
                             wide
@@ -664,6 +779,7 @@ export function TVPlayerControls({
                             onFocus={onControlFocus}
                         />
                         <TVPlayerControl
+                            focusable={visible}
                             ref={settingsRef}
                             label="Settings"
                             icon={(color) => <Settings size={tvSize(22)} color={color} />}
@@ -678,7 +794,7 @@ export function TVPlayerControls({
             </View>
         </View>
     )
-}
+})
 
 function getChapter(chapters: PlayerChapter[], time: number) {
     let current: PlayerChapter | undefined
