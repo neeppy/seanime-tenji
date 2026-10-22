@@ -115,6 +115,15 @@ export function TVDiscoverScreen() {
 
     const genreOptions = React.useMemo(() => [null, ...SEARCH_MEDIA_GENRES], [])
 
+    // Shelves (about 10 cards each) mount one per frame after the hero, so switching to this
+    // tab shows the page straight away instead of building every card first
+    const [shelfCount, setShelfCount] = React.useState(0)
+    React.useEffect(() => {
+        if (shelfCount >= shelves.length) return
+        const frame = requestAnimationFrame(() => setShelfCount(count => count + 1))
+        return () => cancelAnimationFrame(frame)
+    }, [shelfCount, shelves.length])
+
     if (!isConnected) {
         return (
             <View style={{ flex: 1, backgroundColor: "#0a0a0a" }}>
@@ -207,7 +216,7 @@ export function TVDiscoverScreen() {
                 </TVFocusGuideView>
             </View>
 
-            {shelves.map((shelf, index) => (
+            {shelves.slice(0, shelfCount).map((shelf, index) => (
                 <TVShelf
                     key={shelf.key}
                     title={shelf.title}

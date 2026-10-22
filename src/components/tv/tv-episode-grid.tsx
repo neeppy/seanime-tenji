@@ -24,16 +24,19 @@ export function TVEpisodeGrid<T>({
     renderItem,
 }: TVEpisodeGridProps<T>) {
     const [currentPage, setCurrentPage] = React.useState(initialPage)
+    // The page pill highlights straight away; the 24 cards of the new page render right after
+    const visiblePage = React.useDeferredValue(currentPage)
 
+    // Only follow a new starting page (e.g. progress changed), not every refetch of the same episodes
     React.useEffect(() => {
         setCurrentPage(initialPage)
-    }, [initialPage, episodes])
+    }, [initialPage])
 
     const totalPages = Math.ceil(episodes.length / pageSize)
     const pagedEpisodes = React.useMemo(() => {
-        const start = currentPage * pageSize
+        const start = visiblePage * pageSize
         return episodes.slice(start, start + pageSize)
-    }, [episodes, currentPage, pageSize])
+    }, [episodes, visiblePage, pageSize])
 
     if (episodes.length === 0) return null
 

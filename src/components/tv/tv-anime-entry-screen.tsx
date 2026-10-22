@@ -70,6 +70,9 @@ export function TVAnimeEntryScreen({
     const playRef = React.useRef<FocusNode>(null)
 
     const activeView = tvEntryView(currentView ?? localView)
+    // The tab content (up to 24 episode cards) renders after the page or the tab highlight has
+    // shown, so opening a series and switching tabs respond straight away
+    const contentView = React.useDeferredValue<AnimeEntryView | null>(activeView, null)
     const setActiveView = React.useCallback((view: AnimeEntryView) => {
         const next = tvEntryView(view)
         if (onViewChange) {
@@ -482,7 +485,7 @@ export function TVAnimeEntryScreen({
                 />
 
                 <View style={{ flex: 1 }}>
-                    {activeView === "library" && (
+                    {contentView === "library" && (
                         <View style={{ gap: tvSize(30) }}>
                             {mainEpisodes.length > 0 ? (
                                 <TVEpisodeGrid
@@ -522,7 +525,7 @@ export function TVAnimeEntryScreen({
                         </View>
                     )}
 
-                    {activeView === "server-local" && serverLocalEntry ? (
+                    {contentView === "server-local" && serverLocalEntry ? (
                         <View style={{ gap: tvSize(30) }}>
                             <TVEpisodeGrid
                                 title="Episodes"
@@ -556,15 +559,15 @@ export function TVAnimeEntryScreen({
                         </View>
                     ) : null}
 
-                    {activeView === "torrentstream" && (
+                    {contentView === "torrentstream" && (
                         <AnimeEntryTorrentStreamSection entry={entry} />
                     )}
 
-                    {activeView === "onlinestream" && (
+                    {contentView === "onlinestream" && (
                         <AnimeEntryOnlinestreamSection entry={entry} />
                     )}
 
-                    {activeView === "info" && entry.media && (
+                    {contentView === "info" && entry.media && (
                         <TVAnimeEntryInfoView mediaId={entry.media.id} fallbackDescription={entry.media.description} />
                     )}
 
@@ -784,47 +787,60 @@ type TVTabBarProps = {
     onTabPress: (key: AnimeEntryView) => void
 }
 
+// The indicator is a fixed-width bar moved with translateX and stretched with scaleX, so its
+// animation runs on the native driver instead of the JS thread
+const INDICATOR_BASE_WIDTH = 100
+
+function indicatorTransform(x: number, width: number) {
+    return {
+        translateX: x + width / 2 - INDICATOR_BASE_WIDTH / 2,
+        scaleX: width / INDICATOR_BASE_WIDTH,
+    }
+}
+
 const TVTabBar = React.memo(function TVTabBar({ tabs, activeKey, activeRef, onTabPress }: TVTabBarProps) {
     const layouts = React.useRef<Record<string, { x: number; width: number }>>({})
     const indicatorX = React.useRef(new Animated.Value(0)).current
-    const indicatorW = React.useRef(new Animated.Value(0)).current
+    const indicatorScale = React.useRef(new Animated.Value(0)).current
     const hasInitialized = React.useRef(false)
 
     React.useEffect(() => {
         const target = layouts.current[activeKey]
         if (!target) return
+        const { translateX, scaleX } = indicatorTransform(target.x, target.width)
 
         if (!hasInitialized.current) {
-            indicatorX.setValue(target.x)
-            indicatorW.setValue(target.width)
+            indicatorX.setValue(translateX)
+            indicatorScale.setValue(scaleX)
             hasInitialized.current = true
             return
         }
 
         Animated.parallel([
             Animated.spring(indicatorX, {
-                toValue: target.x,
-                useNativeDriver: false,
+                toValue: translateX,
+                useNativeDriver: true,
                 tension: 200,
                 friction: 22,
             }),
-            Animated.spring(indicatorW, {
-                toValue: target.width,
-                useNativeDriver: false,
+            Animated.spring(indicatorScale, {
+                toValue: scaleX,
+                useNativeDriver: true,
                 tension: 200,
                 friction: 22,
             }),
         ]).start()
-    }, [activeKey, indicatorX, indicatorW])
+    }, [activeKey, indicatorX, indicatorScale])
 
     const handleLayout = React.useCallback((key: string, x: number, width: number) => {
         layouts.current[key] = { x, width }
         if (key === activeKey && !hasInitialized.current) {
-            indicatorX.setValue(x)
-            indicatorW.setValue(width)
+            const { translateX, scaleX } = indicatorTransform(x, width)
+            indicatorX.setValue(translateX)
+            indicatorScale.setValue(scaleX)
             hasInitialized.current = true
         }
-    }, [activeKey, indicatorX, indicatorW])
+    }, [activeKey, indicatorX, indicatorScale])
 
     return (
         <View
@@ -858,9 +874,10 @@ const TVTabBar = React.memo(function TVTabBar({ tabs, activeKey, activeRef, onTa
                     style={{
                         position: "absolute",
                         bottom: 0,
-                        left: indicatorX,
-                        width: indicatorW,
+                        left: 0,
+                        width: INDICATOR_BASE_WIDTH,
                         height: tvSize(3),
+                        transform: [{ translateX: indicatorX }, { scaleX: indicatorScale }],
                         borderTopLeftRadius: tvSize(2),
                         borderTopRightRadius: tvSize(2),
                         backgroundColor: "#a89fff",

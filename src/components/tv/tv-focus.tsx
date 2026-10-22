@@ -1,6 +1,5 @@
 import { tvSize } from "@/components/tv/tv-scale"
 import { cn } from "@/lib/utils"
-import { useSegments } from "expo-router"
 import * as React from "react"
 import { Animated, Pressable, type PressableProps, Text, useTVEventHandler, View } from "react-native"
 
@@ -294,11 +293,15 @@ export function useTVFocusLogger() {
     })
 }
 
+// Preferred focus only applies on entry pages. This used to read the router segments, which
+// re-rendered every card and button in the app on each navigation.
+const TVEntryRouteContext = React.createContext(false)
+
+export function TVEntryRouteProvider({ children }: { children: React.ReactNode }) {
+    return <TVEntryRouteContext.Provider value>{children}</TVEntryRouteContext.Provider>
+}
+
 export function usePreferredFocus(preferred?: boolean): boolean {
-    try {
-        const segments = useSegments()
-        return segments.includes("entry") ? !!preferred : false
-    } catch {
-        return false
-    }
+    const isEntryRoute = React.useContext(TVEntryRouteContext)
+    return isEntryRoute ? !!preferred : false
 }
