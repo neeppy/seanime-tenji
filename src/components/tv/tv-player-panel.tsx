@@ -38,7 +38,7 @@ type Props = {
     panel: PlayerPanel
     onNavigate: (panel: PlayerPanel) => void
     onClose: () => void
-    state: PlayerState
+    state: PanelState
     prefs: PlayerPreferences
     updatePrefs: (prefs: Partial<PlayerPreferences>) => void
     episodes?: Anime_Episode[]
@@ -61,6 +61,28 @@ type Props = {
     onToggleAutoSkipOpEd: () => void
 }
 
+// The player fields the panels show. Leaving out playback position lets the panel skip
+// re-rendering on every progress tick.
+type PanelState = Pick<PlayerState, "speed" | "audioTracks" | "subtitleTracks" | "subtitleDelay" | "audioDelay">
+
+type PanelActions = Pick<Props,
+    | "onNavigate"
+    | "onClose"
+    | "updatePrefs"
+    | "onPlayEpisode"
+    | "onSetVideoSource"
+    | "onSetSpeed"
+    | "onSubDelayChange"
+    | "onSubDelayReset"
+    | "onAudioDelayChange"
+    | "onAudioDelayReset"
+    | "onSetSubFontSize"
+    | "onSetAudioTrack"
+    | "onSetSubtitleTrack"
+    | "onToggleAutoNext"
+    | "onToggleAutoSkipOpEd"
+>
+
 const TITLES: Partial<Record<PlayerPanel, string>> = {
     main: "Player settings",
     episodes: "Episodes",
@@ -80,6 +102,33 @@ const ICON = tvSize(21)
 
 export function TVPlayerPanel(props: Props) {
     const back = getBackPanel(props.panel)
+
+    // The player passes new callbacks and state on every tick; hand the content stable
+    // callbacks and only the state it shows so it re-renders when something visible changes.
+    const latest = React.useRef(props)
+    latest.current = props
+    const actions = React.useMemo<Required<PanelActions>>(() => ({
+        onNavigate: panel => latest.current.onNavigate(panel),
+        onClose: () => latest.current.onClose(),
+        updatePrefs: prefs => latest.current.updatePrefs(prefs),
+        onPlayEpisode: episode => latest.current.onPlayEpisode?.(episode),
+        onSetVideoSource: source => latest.current.onSetVideoSource?.(source),
+        onSetSpeed: speed => latest.current.onSetSpeed(speed),
+        onSubDelayChange: delta => latest.current.onSubDelayChange(delta),
+        onSubDelayReset: () => latest.current.onSubDelayReset(),
+        onAudioDelayChange: delta => latest.current.onAudioDelayChange(delta),
+        onAudioDelayReset: () => latest.current.onAudioDelayReset(),
+        onSetSubFontSize: size => latest.current.onSetSubFontSize(size),
+        onSetAudioTrack: id => latest.current.onSetAudioTrack(id),
+        onSetSubtitleTrack: id => latest.current.onSetSubtitleTrack(id),
+        onToggleAutoNext: () => latest.current.onToggleAutoNext(),
+        onToggleAutoSkipOpEd: () => latest.current.onToggleAutoSkipOpEd(),
+    }), [])
+    const { speed, audioTracks, subtitleTracks, subtitleDelay, audioDelay } = props.state
+    const state = React.useMemo<PanelState>(
+        () => ({ speed, audioTracks, subtitleTracks, subtitleDelay, audioDelay }),
+        [speed, audioTracks, subtitleTracks, subtitleDelay, audioDelay],
+    )
     const title = TITLES[props.panel] ?? "Player settings"
 
     return (
@@ -113,12 +162,12 @@ export function TVPlayerPanel(props: Props) {
                     />
                 </View>
             ) : null}
-            <PanelContent {...props} preferred={back === null} />
+            <PanelContent {...props} {...actions} state={state} preferred={back === null} />
         </TVDrawer>
     )
 }
 
-function PanelContent(props: Props & { preferred: boolean }) {
+const PanelContent = React.memo(function PanelContent(props: Props & { preferred: boolean }) {
     switch (props.panel) {
         case "main":
             return <Main {...props} />
@@ -216,7 +265,7 @@ function PanelContent(props: Props & { preferred: boolean }) {
                 </View>
             )
     }
-}
+})
 
 function Main(props: Props & { preferred: boolean }) {
     const rows = [
