@@ -23,6 +23,13 @@ const ITEMS = [
         href: "/(app)/(tabs)/discover" as const,
     },
     {
+        key: "seasons",
+        label: "Seasons",
+        icon: "calendar-outline" as const,
+        activeIcon: "calendar" as const,
+        href: "/(app)/(tabs)/seasons" as const,
+    },
+    {
         key: "lists",
         label: "My Lists",
         icon: "albums-outline" as const,
@@ -118,10 +125,12 @@ export function TVNavBar() {
     const [pending, setPending] = React.useState<string | null>(null)
     const isActive = React.useCallback((key: (typeof ITEMS)[number]["key"]) => {
         if (key === "discover") return routeKey.includes("discover")
+        if (key === "seasons") return routeKey.includes("seasons")
         if (key === "lists") return routeKey.includes("my-lists")
         if (key === "settings") return routeKey.includes("(profile)") && !routeKey.includes("my-lists")
         return routeKey.includes("(library)")
             || (!routeKey.includes("discover")
+                && !routeKey.includes("seasons")
                 && !routeKey.includes("my-lists")
                 && !routeKey.includes("(profile)"))
     }, [routeKey])

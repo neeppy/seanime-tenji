@@ -46,6 +46,12 @@ export default function TabLayout() {
         },
         {
             show: false,
+            name: "seasons",
+            displayName: "Seasons",
+            icon: "calendar",
+        },
+        {
+            show: false,
             name: "my-lists",
             displayName: "My Lists",
             icon: "albums",
