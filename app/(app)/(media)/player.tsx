@@ -1,4 +1,5 @@
 import { getClientIdentity } from "@/api/client/client-identity"
+import { tvKeyAction } from "@/components/tv/tv-native"
 import type { Anime_Episode, Onlinestream_VideoSource } from "@/api/generated/types"
 import { useGetContinuityWatchHistory } from "@/api/hooks/continuity.hooks"
 import {
@@ -60,7 +61,7 @@ import { MpvPlayerView, type TechnicalInfo } from "expo-mpv-player"
 import { NavigationBar } from "expo-navigation-bar"
 import { useRouter } from "expo-router"
 import { useAtom, useAtomValue } from "jotai/react"
-import { SkipForward } from "lucide-react-native"
+import SkipForward from "lucide-react-native/icons/skip-forward"
 import React from "react"
 import {
     ActivityIndicator,
@@ -70,6 +71,7 @@ import {
     Pressable as RNPressable,
     StatusBar,
     Text,
+    TVEventControl,
     useTVEventHandler,
     useWindowDimensions,
     View,
@@ -743,26 +745,29 @@ function PlayerScreenInner() {
         if (!Platform.isTV || !event) return
         if (event.eventType === "menu") return
 
-        if (event.eventType === "playPause") {
-            player.togglePlayPause()
+        if (event.eventType === "playPause" || event.eventType === "play" || event.eventType === "pause") {
+            if (tvKeyAction(event) === 0) return
+            if (event.eventType === "play") player.play()
+            else if (event.eventType === "pause") player.pause()
+            else player.togglePlayPause()
             controls.showControls()
             return
         }
 
         if (event.eventType === "longLeft") {
-            if (event.eventKeyAction === 0) tvLongSeek.start(-1)
-            if (event.eventKeyAction === 1) tvLongSeek.stop()
+            if (tvKeyAction(event) === 0) tvLongSeek.start(-1)
+            if (tvKeyAction(event) === 1) tvLongSeek.stop()
             return
         }
         if (event.eventType === "longRight") {
-            if (event.eventKeyAction === 0) tvLongSeek.start(1)
-            if (event.eventKeyAction === 1) tvLongSeek.stop()
+            if (tvKeyAction(event) === 0) tvLongSeek.start(1)
+            if (tvKeyAction(event) === 1) tvLongSeek.stop()
             return
         }
 
         if (panel || nextEpisodePrompt || showExitPrompt) return
 
-        if (event.eventKeyAction === 0) return
+        if (tvKeyAction(event) === 0) return
 
         if (!controls.controlsVisible) {
             // left/right keep seeking while the controls stay hidden; up/down/select open them
@@ -796,6 +801,13 @@ function PlayerScreenInner() {
             controls.scheduleHide()
         }
     })
+
+    // tvOS only reports Menu to BackHandler while the menu key is enabled. Otherwise the native stack pops the player directly.
+    React.useEffect(() => {
+        if (!Platform.isTV || Platform.OS !== "ios") return
+        TVEventControl.enableTVMenuKey()
+        return () => TVEventControl.disableTVMenuKey()
+    }, [])
 
     React.useEffect(() => {
         if (!Platform.isTV) return

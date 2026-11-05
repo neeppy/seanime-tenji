@@ -3,7 +3,7 @@ import type { ConfigContext, ExpoConfig } from "expo/config"
 export default ({ config }: ConfigContext): ExpoConfig => {
     const isTV = process.env.EXPO_TV === "1"
     const isTVDev = isTV && process.env.SEANIME_TV_DEV === "1"
-    const version = process.env.APP_VERSION || "0.3.0"
+    const version = process.env.APP_VERSION || "0.4.0"
     // OTA updates are served by upstream; enabling them here would replace this fork's JS bundle
     const otaEnabled = process.env.SEANIME_OTA === "1"
     const otaChannel = isTV ? "stable-tv" : "stable"
@@ -33,7 +33,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
             },
         },
         ios: {
-            buildNumber: "23",
+            buildNumber: "24",
             appleTeamId: process.env.EXPO_APPLE_TEAM_ID || "",
             supportsTablet: true,
             bundleIdentifier: process.env.EXPO_IOS_BUNDLE_ID || "app.seanime.tenji",
@@ -115,6 +115,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
             ],
             "expo-font",
             "expo-status-bar",
+            ["expo-navigation-bar", { enforceContrast: false }],
             "@react-native-community/datetimepicker",
             "./plugins/withAndroidExternalPlayerQueries",
             "./plugins/withAndroidLanCleartext",
@@ -123,10 +124,11 @@ export default ({ config }: ConfigContext): ExpoConfig => {
             "./plugins/withLibcppPickFirst",
             "./plugins/withPiPSupport",
             "./plugins/withMPVKitiOS",
+            "./plugins/withPodDeploymentTarget",
             "./plugins/withExpoDownloadManageriOS",
             "./plugins/withExpoOfflineLoggeriOS",
             "expo-updates",
-            "expo-image",
+            ["expo-image", { disableLibdav1d: isTV }],
         ],
         experiments: {
             typedRoutes: true,
