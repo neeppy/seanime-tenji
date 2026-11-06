@@ -741,6 +741,10 @@ function PlayerScreenInner() {
         if (canGoBack()) back()
     }, [back, canGoBack, player, saveReturnFocus, stopTVTorrent])
 
+    // Fork: whether the floating skip button is showing (set below, once autoNext exists)
+    const tvFloatingSkipRef = React.useRef(false)
+    const tvSkipSelectRef = React.useRef(false)
+
     useTVEventHandler((event) => {
         if (!Platform.isTV || !event) return
         if (event.eventType === "menu") return
@@ -766,6 +770,20 @@ function PlayerScreenInner() {
         }
 
         if (panel || nextEpisodePrompt || showExitPrompt) return
+
+        // Fork: OK on the floating skip button belongs to the button, so don't also open the
+        // controls. Decided on key down, since the skip may already be gone by key up.
+        if (event.eventType === "select" || event.eventType === "enter") {
+            const onFloatingSkip = !controls.controlsVisible && tvFloatingSkipRef.current
+            const action = tvKeyAction(event)
+            if (action === 0) {
+                tvSkipSelectRef.current = onFloatingSkip
+                return
+            }
+            const swallow = action === undefined ? onFloatingSkip : tvSkipSelectRef.current
+            tvSkipSelectRef.current = false
+            if (swallow) return
+        }
 
         if (tvKeyAction(event) === 0) return
 
@@ -995,6 +1013,7 @@ function PlayerScreenInner() {
         eofReached: state.eofReached,
         playNextEpisode,
     })
+    tvFloatingSkipRef.current = (showSkipIntro || showSkipOutro) && autoNext.autoNextCountdown === null
 
     const shouldConfirmEarlySkip = state.duration > 0
         && remainingTime > NEXT_EPISODE_CONFIRM_REMAINING_SECONDS

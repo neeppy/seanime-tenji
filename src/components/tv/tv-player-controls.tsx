@@ -115,6 +115,58 @@ const TVPlayerControl = React.forwardRef<React.ElementRef<typeof Pressable>, Con
 
 TVPlayerControl.displayName = "TVPlayerControl"
 
+const TVFloatingSkip = React.forwardRef<React.ElementRef<typeof Pressable>, {
+    label: string
+    onPress: () => void
+}>(({ label, onPress }, ref) => {
+    const focus = useTVFocus(1.04)
+
+    return (
+        <Pressable
+            ref={ref}
+            hasTVPreferredFocus
+            onPress={onPress}
+            onFocus={focus.focus}
+            onBlur={focus.blur}
+            accessibilityRole="button"
+            accessibilityLabel={label}
+            style={{
+                position: "absolute",
+                right: tvSize(68),
+                bottom: tvSize(120),
+                zIndex: 41,
+            }}
+        >
+            <Animated.View
+                style={[
+                    focus.style,
+                    {
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: tvSize(10),
+                        paddingHorizontal: tvSize(26),
+                        height: tvSize(60),
+                        borderRadius: tvSize(30),
+                        borderWidth: tvSize(3),
+                        borderColor: focus.focused ? FOCUS_BORDER : "rgba(255,255,255,0.35)",
+                        backgroundColor: focus.focused ? "rgba(255,255,255,0.95)" : "rgba(0,0,0,0.6)",
+                    },
+                ]}
+            >
+                <Text
+                    className="font-bold"
+                    style={{ fontSize: tvSize(20), color: focus.focused ? "#000000" : "#ffffff" }}
+                >
+                    {label}
+                </Text>
+                <SkipForward size={tvSize(22)} color={focus.focused ? "#000000" : "#ffffff"} />
+            </Animated.View>
+        </Pressable>
+    )
+})
+
+TVFloatingSkip.displayName = "TVFloatingSkip"
+
 function TVPlayerExit({
     onPress,
     onFocus,
@@ -227,6 +279,9 @@ export function TVPlayerControls({
     const returnRef = React.useRef<"episodes" | "tracks" | "settings" | null>(null)
     const [playTarget, setPlayTarget] = React.useState<React.ElementRef<typeof Pressable> | null>(null)
     const hiddenRef = React.useRef<React.ElementRef<typeof Pressable>>(null)
+    // Fork: while the controls are hidden, an available skip gets its own focused button
+    // (Netflix-style) so one OK press skips without opening the full controls
+    const floatingSkip = !visible && focusWhenHidden && !!skipLabel && !!onSkip
     const bindPlay = React.useCallback((target: React.ElementRef<typeof Pressable> | null) => {
         playRef.current = target
         setPlayTarget(target)
@@ -274,7 +329,7 @@ export function TVPlayerControls({
             clearTimeout(timer)
             if (frame) cancelAnimationFrame(frame)
         }
-    }, [focusWhenHidden, visible])
+    }, [floatingSkip, focusWhenHidden, visible])
 
     // The overlay stays mounted while hidden so showing it is a style change rather than a
     // full rebuild. Its props are frozen while hidden so playback progress doesn't re-render it.
@@ -311,7 +366,9 @@ export function TVPlayerControls({
 
     const hiddenLayer = visible ? null : (
         <>
-            {focusWhenHidden ? (
+            {floatingSkip ? (
+                <TVFloatingSkip ref={hiddenRef} label={skipLabel!} onPress={onSkip!} />
+            ) : focusWhenHidden ? (
                 <Pressable
                     ref={hiddenRef}
                     hasTVPreferredFocus
