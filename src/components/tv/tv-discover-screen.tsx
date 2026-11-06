@@ -6,6 +6,7 @@ import {
     useDiscoverCurrentSeasonAnime,
     useDiscoverMissedSequels,
     useDiscoverPastSeasonAnime,
+    useDiscoverRecentlyAired,
     useDiscoverTrendingAnime,
     useDiscoverTrendingMovies,
     useDiscoverUpcomingAnime,
@@ -34,6 +35,7 @@ export function TVDiscoverScreen() {
     const [searchButton, setSearchButton] = React.useState<React.ElementRef<typeof Pressable> | null>(null)
     const trending = useDiscoverTrendingAnime(true, genre ? [genre] : undefined)
     const current = useDiscoverCurrentSeasonAnime()
+    const recent = useDiscoverRecentlyAired()
     const past = useDiscoverPastSeasonAnime()
     const upcoming = useDiscoverUpcomingAnime()
     const movies = useDiscoverTrendingMovies()
@@ -72,6 +74,11 @@ export function TVDiscoverScreen() {
             media: trendingMedia,
         },
         {
+            key: "recent",
+            title: "Aired recently",
+            media: recent.media,
+        },
+        {
             key: "season",
             title: `Top of ${getCurrentSeasonLabel()}`,
             media: current.data?.Page?.media?.filter(Boolean) as AL_BaseAnime[] ?? [],
@@ -82,14 +89,14 @@ export function TVDiscoverScreen() {
             media: past.data?.Page?.media?.filter(Boolean) as AL_BaseAnime[] ?? [],
         },
         {
-            key: "movies",
-            title: "Trending movies",
-            media: movies.data?.Page?.media?.filter(Boolean) as AL_BaseAnime[] ?? [],
-        },
-        {
             key: "upcoming",
             title: "Coming soon",
             media: upcoming.data?.Page?.media?.filter(Boolean) as AL_BaseAnime[] ?? [],
+        },
+        {
+            key: "movies",
+            title: "Trending movies",
+            media: movies.data?.Page?.media?.filter(Boolean) as AL_BaseAnime[] ?? [],
         },
         {
             key: "missed",
@@ -101,20 +108,12 @@ export function TVDiscoverScreen() {
         missed.data,
         movies.data?.Page?.media,
         past.data?.Page?.media,
+        recent.media,
         trendingMedia,
         upcoming.data?.Page?.media,
     ])
 
     const genreOptions = React.useMemo(() => [null, ...SEARCH_MEDIA_GENRES], [])
-
-    // Shelves (about 10 cards each) mount one per frame after the hero, so switching to this
-    // tab shows the page straight away instead of building every card first
-    const [shelfCount, setShelfCount] = React.useState(0)
-    React.useEffect(() => {
-        if (shelfCount >= shelves.length) return
-        const frame = requestAnimationFrame(() => setShelfCount(count => count + 1))
-        return () => cancelAnimationFrame(frame)
-    }, [shelfCount, shelves.length])
 
     if (!isConnected) {
         return (
@@ -208,7 +207,7 @@ export function TVDiscoverScreen() {
                 </TVFocusGuideView>
             </View>
 
-            {shelves.slice(0, shelfCount).map((shelf, index) => (
+            {shelves.map((shelf, index) => (
                 <TVShelf
                     key={shelf.key}
                     title={shelf.title}

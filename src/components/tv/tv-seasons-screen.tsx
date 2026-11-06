@@ -1,6 +1,6 @@
-import type { AL_BaseAnime, AL_MediaFormat, AL_MediaSeason, AL_MediaSort } from "@/api/generated/types"
+import type { AL_BaseAnime, AL_MediaFormat, AL_MediaSort } from "@/api/generated/types"
 import { useInfiniteAnimeSearch } from "@/api/hooks/search.hooks"
-import { formatSeasonLabel, getCurrentSeason, listSeasons } from "@/components/features/discover/discover-queries"
+import { formatSeasonLabel, getCurrentSeason, listSeasons, type SeasonItem } from "@/lib/seasons"
 import { TV, TVMediaGrid, TVPillButton, tvSize } from "@/components/tv"
 import { SEARCH_MEDIA_GENRES } from "@/lib/search/search-constants"
 import { DEFAULT_SEARCH_PARAMS, type SearchParams } from "@/lib/search/search.atoms"
@@ -10,7 +10,6 @@ import { ActivityIndicator, FlatList, Pressable, Text, TVFocusGuideView, View } 
 
 type PillRef = React.ElementRef<typeof Pressable>
 
-type SeasonItem = { season: AL_MediaSeason; year: number }
 
 const FORMATS: { value: AL_MediaFormat | null; label: string }[] = [
     { value: null, label: "All" },
