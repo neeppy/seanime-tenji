@@ -743,7 +743,7 @@ function PlayerScreenInner() {
 
     // Fork: whether the floating skip button is showing (set below, once autoNext exists)
     const tvFloatingSkipRef = React.useRef(false)
-    const tvSkipSelectRef = React.useRef(false)
+    const tvSkipPressedAtRef = React.useRef(0)
 
     useTVEventHandler((event) => {
         if (!Platform.isTV || !event) return
@@ -771,21 +771,18 @@ function PlayerScreenInner() {
 
         if (panel || nextEpisodePrompt || showExitPrompt) return
 
-        // Fork: OK on the floating skip button belongs to the button, so don't also open the
-        // controls. Decided on key down, since the skip may already be gone by key up.
-        if (event.eventType === "select" || event.eventType === "enter") {
-            const onFloatingSkip = !controls.controlsVisible && tvFloatingSkipRef.current
-            const action = tvKeyAction(event)
-            if (action === 0) {
-                tvSkipSelectRef.current = onFloatingSkip
-                return
-            }
-            const swallow = action === undefined ? onFloatingSkip : tvSkipSelectRef.current
-            tvSkipSelectRef.current = false
-            if (swallow) return
-        }
-
         if (tvKeyAction(event) === 0) return
+
+        // Fork: OK on the floating skip button belongs to the button, so don't also open the
+        // controls. Android TV only reports select on key up, which can land just after the
+        // button's press already skipped (and the button is gone), hence the recent-skip check.
+        if (
+            (event.eventType === "select" || event.eventType === "enter")
+            && !controls.controlsVisible
+            && (tvFloatingSkipRef.current || Date.now() - tvSkipPressedAtRef.current < 1000)
+        ) {
+            return
+        }
 
         if (!controls.controlsVisible) {
             // left/right keep seeking while the controls stay hidden; up/down/select open them
@@ -1277,6 +1274,7 @@ function PlayerScreenInner() {
                             skipLabel={showSkipIntro ? "Skip intro" : showSkipOutro ? "Skip outro" : undefined}
                             onSkip={(showSkipIntro || showSkipOutro) ? () => {
                                 const target = showSkipIntro ? skipData.op!.interval.endTime : skipData.ed!.interval.endTime
+                                tvSkipPressedAtRef.current = Date.now()
                                 playerSeekTo(target)
                                 toast.info(showSkipIntro ? "Skipped opening intro" : "Skipped ending outro")
                             } : undefined}
