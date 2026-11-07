@@ -215,6 +215,8 @@ type MediaEntryHeaderContentProps = {
     entry: Anime_Entry | Manga_Entry
     type: "anime" | "manga"
     onTitlePress?: () => void
+    /** Fork: rough release cadence ("Weekly"), shown after the status while releasing */
+    releaseCadence?: string | null
 }
 
 const ANIME_LIST_STATUS_LABELS: Record<string, string> = {
@@ -231,7 +233,7 @@ const MANGA_LIST_STATUS_LABELS: Record<string, string> = {
     "CURRENT": "Reading",
 }
 
-function MediaEntryHeaderContentInner({ entry, type, onTitlePress }: MediaEntryHeaderContentProps) {
+function MediaEntryHeaderContentInner({ entry, type, onTitlePress, releaseCadence }: MediaEntryHeaderContentProps) {
     const serverStatus = useServerStatus()
     const coverImageUri = entry?.media?.coverImage?.large || entry?.media?.coverImage?.extraLarge
 
@@ -301,6 +303,7 @@ function MediaEntryHeaderContentInner({ entry, type, onTitlePress }: MediaEntryH
                                 {formattedStartDate}
                                 {!!season ? ` · ${capitalize(season)}` : ""}
                                 {!!status ? ` · ${capitalize(status.replaceAll("_", " "))}` : ""}
+                                {status === "RELEASING" && !!releaseCadence ? ` · ${releaseCadence}` : ""}
                             </Text>
                         </View>
                     )}

@@ -14,6 +14,7 @@ type MediaEntryScrollShellProps = {
     scrollY?: SharedValue<number>
     showHeaderBackground?: boolean
     onTitlePress?: () => void
+    releaseCadence?: string | null
 }
 
 export function MediaEntryScrollShell({
@@ -25,6 +26,7 @@ export function MediaEntryScrollShell({
     scrollY: sharedScrollY,
     showHeaderBackground = true,
     onTitlePress,
+    releaseCadence,
 }: MediaEntryScrollShellProps) {
     const localScrollY = useSharedValue(0)
     const scrollY = sharedScrollY ?? localScrollY
@@ -50,7 +52,7 @@ export function MediaEntryScrollShell({
                 onScroll={onScroll}
                 contentContainerStyle={[{ paddingBottom: 110 }, contentContainerStyle]}
             >
-                <MediaEntryHeaderContent entry={entry} type={type} onTitlePress={onTitlePress} />
+                <MediaEntryHeaderContent entry={entry} type={type} onTitlePress={onTitlePress} releaseCadence={releaseCadence} />
                 <View style={{ width: "100%", alignSelf: "stretch" }}>
                     {children}
                 </View>

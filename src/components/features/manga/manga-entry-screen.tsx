@@ -14,6 +14,7 @@ import { Styles } from "@/components/shared/styles"
 import { useDevScreenProfiler } from "@/hooks/use-dev-screen-profiler"
 import { useIOSScrollRefreshRateWorkaround } from "@/hooks/use-ios-scroll-refresh-rate-workaround"
 import { useHandleMangaChapters } from "@/hooks/use-manga-chapters"
+import { estimateMangaCadence } from "@/lib/manga-cadence"
 import { getAllDownloadedChaptersForMediaAllProviders } from "@/lib/downloads/manga-download-store"
 import { useIsServerConnected, useServerConnectionState } from "@/lib/offline"
 import { saveMangaDownloadEntrySnapshot } from "@/lib/offline/download-entry-snapshot-store"
@@ -55,6 +56,13 @@ export function MangaEntryScreen({ initialView = "chapters" }: MangaEntryScreenP
     const isOffline = connectionState === "disconnected"
     const [currentView, setCurrentView] = useState<MangaEntryView>(startView)
     const [isPrimaryBodyReady, setIsPrimaryBodyReady] = useState(false)
+    // Fork: rough release cadence for the header, from the same (cached) chapter list the
+    // chapters view loads. Waits for the deferred body so it doesn't fetch any earlier.
+    const { chapterContainer: cadenceChapters } = useHandleMangaChapters(isPrimaryBodyReady ? id ?? null : null)
+    const releaseCadence = useMemo(
+        () => estimateMangaCadence(cadenceChapters?.chapters ?? [])?.label ?? null,
+        [cadenceChapters],
+    )
     const chaptersScrollY = useSharedValue(0)
     const infoScrollY = useSharedValue(0)
     const downloadedScrollY = useSharedValue(0)
@@ -180,7 +188,7 @@ export function MangaEntryScreen({ initialView = "chapters" }: MangaEntryScreenP
                                 contentContainerStyle={{ paddingBottom: 110 }}
                                 nestedScrollEnabled
                             >
-                                <MediaEntryHeaderContent entry={entry} type="manga" onTitlePress={() => setCurrentView("info")} />
+                                <MediaEntryHeaderContent entry={entry} type="manga" onTitlePress={() => setCurrentView("info")} releaseCadence={releaseCadence} />
                                 <OfflineBanner />
                                 {isPrimaryBodyReady ? (
                                     <MangaEntryPrimaryContent
@@ -209,6 +217,7 @@ export function MangaEntryScreen({ initialView = "chapters" }: MangaEntryScreenP
                             scrollY={infoScrollY}
                             showHeaderBackground={false}
                             onTitlePress={() => setCurrentView("info")}
+                            releaseCadence={releaseCadence}
                         >
                             <OfflineBanner />
                             <MangaEntryInfoView mediaId={entry.media.id} fallbackDescription={entry.media.description} />
@@ -225,6 +234,7 @@ export function MangaEntryScreen({ initialView = "chapters" }: MangaEntryScreenP
                             scrollY={downloadedScrollY}
                             showHeaderBackground={false}
                             onTitlePress={() => setCurrentView("info")}
+                            releaseCadence={releaseCadence}
                         >
                             <MangaEntryDownloadedView media={entry.media} />
                         </MediaEntryScrollShell>

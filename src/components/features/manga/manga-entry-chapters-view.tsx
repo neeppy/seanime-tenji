@@ -9,6 +9,7 @@ import { Surface } from "@/components/shared/surface"
 import { FormSectionLabel } from "@/components/ui/form-field"
 import { useHandleMangaChapters } from "@/hooks/use-manga-chapters"
 import { useCompletedMangaChapters, useIsMangaChapterDownloaded, useMangaChapterDownloadInfo } from "@/lib/downloads/use-manga-downloads"
+import { formatChapterDate, parseChapterDate } from "@/lib/manga-cadence"
 import { cn } from "@/lib/utils"
 import Ionicons from "@expo/vector-icons/Ionicons"
 import { useRouter } from "expo-router"
@@ -343,6 +344,8 @@ function ChapterListItem({
     const downloadInfo = useMangaChapterDownloadInfo(mediaId, provider, chapter.id)
     const isActivelyDownloading = downloadInfo?.status === "downloading"
     const isPending = downloadInfo?.status === "pending"
+    // Fork: upload date from the source, when its extension provides one
+    const releasedAt = parseChapterDate(chapter.updatedAt)
 
     return (
         <Pressable
@@ -398,6 +401,11 @@ function ChapterListItem({
                     numberOfLines={2}
                 >
                     {chapter.title || `Chapter ${chapter.chapter}`}
+                    {releasedAt !== null && (
+                        <Text className="text-xs font-normal text-white/30">
+                            {`  ·  ${formatChapterDate(releasedAt)}`}
+                        </Text>
+                    )}
                 </Text>
                 {(showScanlator && !!chapter.scanlator) && (
                     <Text className="text-xs text-muted-foreground" numberOfLines={1}>
