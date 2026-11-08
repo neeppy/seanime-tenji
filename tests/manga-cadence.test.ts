@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { estimateMangaCadence, formatChapterDate, parseChapterDate } from "../src/lib/manga-cadence.ts"
+import { chapterReleaseTime, estimateMangaCadence, formatChapterDate, parseChapterDate, ulidTime } from "../src/lib/manga-cadence.ts"
 
 const NOW = new Date(2026, 10, 8, 12).getTime()
 const DAY = 24 * 60 * 60 * 1000
@@ -54,4 +54,27 @@ test("several scanlators uploading the same chapter count as one release", () =>
 test("no cadence without enough dated chapters", () => {
     assert.equal(estimateMangaCadence(chapters(14, 7, 0), NOW), null)
     assert.equal(estimateMangaCadence([{ chapter: "1" }, { chapter: "2", updatedAt: "" }], NOW), null)
+})
+
+test("WeebCentral's ULID chapter ids carry the upload date the site shows", () => {
+    // real ids from WeebCentral, with the date it lists for each
+    assert.equal(new Date(ulidTime("01M5BFH8YM5J7HMPV3C8KYW11X", NOW)!).toISOString().slice(0, 10), "2026-10-20")
+    assert.equal(new Date(ulidTime("01KY2MGHQ0WGDVM343YSBK6NWA", NOW)!).toISOString().slice(0, 10), "2026-07-21")
+    // not ULIDs: MangaDex uuids, short ids, slugs
+    assert.equal(ulidTime("acdbf57f-bf54-41b4-8d92-b3f3d14c852e", NOW), null)
+    assert.equal(ulidTime("12345", NOW), null)
+    assert.equal(ulidTime("game-31", NOW), null)
+    assert.equal(ulidTime(undefined, NOW), null)
+})
+
+test("a source's own date wins over the id, and the id fills in when there's none", () => {
+    const id = "01M5BFH8YM5J7HMPV3C8KYW11X"
+    assert.equal(chapterReleaseTime({ id, updatedAt: "2026-11-01T00:00:00Z" }, NOW), Date.parse("2026-11-01T00:00:00Z"))
+    assert.equal(chapterReleaseTime({ id }, NOW), ulidTime(id, NOW))
+    assert.equal(chapterReleaseTime({ id: "abc" }, NOW), null)
+})
+
+test("cadence works from ULID ids alone", () => {
+    const ids = ["01M5BFH8YM5J7HMPV3C8KYW11X", "01M34JG2JXHAWQ5AXCRQPQZ7SD", "01KY2MGHQ0WGDVM343YSBK6NWA", "01KVS2KWXNA4HRXX01MWE3VM59", "01KRYSSY2W9ZGFX20NWTJCGYC8", "01KPF2J56Z7QX7JVV0VCWPFZJ4"]
+    assert.equal(estimateMangaCadence(ids.map((id, index) => ({ id, chapter: String(index) })), NOW)?.label, "Monthly")
 })

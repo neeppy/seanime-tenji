@@ -7,7 +7,10 @@ const MIN_DATE = Date.UTC(1990, 0, 1)
 const CADENCE_WINDOW = 12
 const MIN_GAPS = 3
 
-type ChapterLike = { chapter: string, updatedAt?: string }
+type ChapterLike = { id?: string, chapter: string, updatedAt?: string }
+
+const ULID_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+const ULID_PATTERN = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/
 
 /**
  * Parses a chapter's `updatedAt` into a timestamp. Extensions differ: ISO dates, plain dates
@@ -28,6 +31,24 @@ export function parseChapterDate(value: string | undefined | null, now = Date.no
 
     if (!Number.isFinite(time) || time < MIN_DATE || time > now + 2 * DAY_MS) return null
     return time
+}
+
+/**
+ * Some sites (WeebCentral) use ULIDs as chapter ids, which start with the creation time in
+ * milliseconds. That's the upload date the site itself shows, so it stands in for `updatedAt`.
+ */
+export function ulidTime(id: string | undefined | null, now = Date.now()): number | null {
+    if (!id || !ULID_PATTERN.test(id.toUpperCase())) return null
+    let time = 0
+    for (const char of id.slice(0, 10).toUpperCase()) {
+        time = time * 32 + ULID_ALPHABET.indexOf(char)
+    }
+    return time < MIN_DATE || time > now + 2 * DAY_MS ? null : time
+}
+
+/** When a chapter came out: the source's `updatedAt`, or the time in a ULID chapter id. */
+export function chapterReleaseTime(chapter: Pick<ChapterLike, "id" | "updatedAt">, now = Date.now()): number | null {
+    return parseChapterDate(chapter.updatedAt, now) ?? ulidTime(chapter.id, now)
 }
 
 /** "Today", "3d ago" within a week, otherwise "Nov 2" (with the year when it isn't this year). */
@@ -78,7 +99,7 @@ function cadenceLabel(days: number) {
 export function estimateMangaCadence(chapters: ChapterLike[], now = Date.now()): MangaCadence | null {
     const days = new Set<number>()
     for (const chapter of chapters) {
-        const time = parseChapterDate(chapter.updatedAt, now)
+        const time = chapterReleaseTime(chapter, now)
         if (time !== null) days.add(Math.floor(time / DAY_MS))
     }
 
