@@ -25,6 +25,8 @@ import {
 import { requestTVFocus } from "@/components/tv/tv-native"
 import { ContinueWatchingItem, useAnimeLibraryCollection } from "@/hooks/use-anime-library-collection"
 import { useTVGenreShelf, useTVRecommendations } from "@/hooks/use-tv-recommendations"
+import { useTVSequels } from "@/hooks/use-tv-sequels"
+import { isMainline } from "@/lib/sequels"
 import { getContinueWatchingSpoilerActive, getEpisodeSpoilerState, getSpoilerSafeAnimeImage } from "@/lib/anime-spoilers"
 import { Ionicons } from "@/lib/icons/Ionicons"
 import { cleanHtml, mediaTitle } from "@/lib/media-metadata"
@@ -95,7 +97,6 @@ export function TVHomeScreen() {
         refetch,
     } = useAnimeLibraryCollection()
     const rawCollection = useGetRawAnimeCollection()
-    const missed = useDiscoverMissedSequels()
     const past = useDiscoverPastSeasonAnime()
     const upcoming = useDiscoverUpcomingAnime()
 
@@ -122,6 +123,14 @@ export function TVHomeScreen() {
     const listsReady = !rawCollection.isLoading
     const romance = useTVGenreShelf(GENRE_SHELVES[0], listedIds, listsReady)
     const action = useTVGenreShelf(GENRE_SHELVES[1], listedIds, listsReady)
+    // Sequels come from AniList directly; the server's list (first sequel link per show, a random
+    // 10) is only asked for when AniList can't be reached
+    const sequels = useTVSequels(listEntries, listedIds, listsReady)
+    const missed = useDiscoverMissedSequels(sequels.isError)
+    const sequelMedia = React.useMemo(
+        () => sequels.isError ? (missed.data ?? []).filter(media => isMainline(media.format)) : sequels.media,
+        [missed.data, sequels.isError, sequels.media],
+    )
 
     const allLibraryEntries = React.useMemo(() => libraryCollectionList.flatMap(list => list?.entries ?? []), [libraryCollectionList])
     const searchMedia = React.useMemo(() => {
@@ -148,7 +157,7 @@ export function TVHomeScreen() {
                 key: "sequels",
                 title: "Sequels to your shows",
                 heroLabel: "Sequel to a show you've watched",
-                media: take(missed.data ?? [], false),
+                media: take(sequelMedia, false),
             },
             ...recommendations.shelves.map(shelf => ({
                 key: `because-${shelf.seed.id}`,
@@ -197,10 +206,10 @@ export function TVHomeScreen() {
         action,
         listEntries,
         listedIds,
-        missed.data,
         past.data?.Page?.media,
         recommendations.shelves,
         romance,
+        sequelMedia,
         upcoming.data?.Page?.media,
     ])
 
@@ -280,6 +289,7 @@ export function TVHomeScreen() {
         || recommendations.isLoading
         || romance.isLoading
         || action.isLoading
+        || sequels.isLoading
         || missed.isLoading
         || past.isLoading
 
