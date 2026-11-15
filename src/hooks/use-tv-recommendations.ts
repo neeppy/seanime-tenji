@@ -26,7 +26,13 @@ const MIN_SHELF_ITEMS = 4
  * favourite recent shows. `hiddenIds` are left out (shows already on your lists).
  */
 export function useTVRecommendations(entries: Entry[], hiddenIds: ReadonlySet<number>) {
-    const seeds = React.useMemo(() => pickSeeds(entries, LAUNCH_SEED).slice(0, CANDIDATE_COUNT), [entries])
+    // Picked once per launch: shows you add or score later (e.g. from the quick list) would
+    // otherwise reshuffle the shelves and set off more AniList requests
+    const frozenSeeds = React.useRef<AL_BaseAnime[] | null>(null)
+    if (!frozenSeeds.current && entries.length > 0) {
+        frozenSeeds.current = pickSeeds(entries, LAUNCH_SEED).slice(0, CANDIDATE_COUNT)
+    }
+    const seeds = frozenSeeds.current ?? []
 
     // A fixed number of hooks; ids past the end of the list disable their query
     const first = useGetAnilistAnimeDetails(seeds[0]?.id)
@@ -72,7 +78,9 @@ export function useTVGenreShelf(genre: string, hiddenIds: ReadonlySet<number>, r
     const sort = React.useMemo(() => pickGenreSort(genre, LAUNCH_SEED), [genre])
 
     const query = useQuery({
-        queryKey: ["tv-genre-shelf", serverUrl, genre, sort.sort, hiddenIds.size],
+        // Fetched once per launch; shows added afterwards are hidden below rather than refetched,
+        // since each fetch is up to 4 AniList requests and list edits can come in quick succession
+        queryKey: ["tv-genre-shelf", serverUrl, genre, sort.sort],
         queryFn: () => collectUnseen(async page => {
             const result = await buildSeaQuery<AL_ListAnime, AnilistListAnime_Variables>({
                 serverUrl,
@@ -99,8 +107,8 @@ export function useTVGenreShelf(genre: string, hiddenIds: ReadonlySet<number>, r
 
     // Disabled until ready, which reads as not loading; the caller already waits for the lists
     return React.useMemo(() => ({
-        media: query.data ?? [],
+        media: (query.data ?? []).filter(item => !hiddenIds.has(item.id)),
         sortLabel: sort.label,
         isLoading: query.isLoading,
-    }), [query.data, query.isLoading, sort.label])
+    }), [hiddenIds, query.data, query.isLoading, sort.label])
 }

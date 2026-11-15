@@ -12,7 +12,9 @@ import {
 import { TVDrawer } from "@/components/tv/tv-drawer"
 import { TVButton, TVPillButton } from "@/components/tv/tv-focus"
 import { TVInput } from "@/components/tv/tv-input"
+import { requestTVFocus } from "@/components/tv/tv-native"
 import { tvSize } from "@/components/tv/tv-scale"
+import { TVScoreRow } from "@/components/tv/tv-score-row"
 import { useIsServerConnected } from "@/lib/offline"
 import { Ionicons } from "@expo/vector-icons"
 import * as React from "react"
@@ -99,6 +101,8 @@ export function TVEditAnilistEntryDrawer({
     const [confirmRemove, setConfirmRemove] = React.useState(false)
     const keepRef = React.useRef<React.ElementRef<typeof Pressable>>(null)
     const removeRef = React.useRef<React.ElementRef<typeof Pressable>>(null)
+    // Fork: `preferred` only works on entry routes; the drawer also opens from cards (quick list)
+    const firstStatusRef = React.useRef<React.ElementRef<typeof Pressable>>(null)
     const wasConfirming = React.useRef(false)
     const isConnected = useIsServerConnected()
     const { mutate: save, isPending: saving } = useEditAnilistListEntry(entry.mediaId, "anime")
@@ -171,6 +175,7 @@ export function TVEditAnilistEntryDrawer({
             title={entry.media?.title?.userPreferred ?? "Anime list entry"}
             subtitle={entry.listData ? "Edit AniList entry" : "Add to AniList"}
             width={tvSize(820)}
+            onShow={() => requestTVFocus(firstStatusRef.current)}
         >
             <ScrollView
                 showsVerticalScrollIndicator={false}
@@ -199,8 +204,13 @@ export function TVEditAnilistEntryDrawer({
                                 <TVPillButton
                                     label={item.label}
                                     active={form.status === item.value}
+                                    ref={index === 0 ? firstStatusRef : undefined}
                                     preferred={index === 0}
-                                    onPress={() => setValue("status", item.value as AL_MediaListStatus)}
+                                    onPress={() => {
+                                        setValue("status", item.value as AL_MediaListStatus)
+                                        // Fork: completing means every episode that's out was watched
+                                        if (item.value === "COMPLETED" && maxProgress > 0) setValue("progress", String(maxProgress))
+                                    }}
                                 />
                             )}
                         />
@@ -209,13 +219,17 @@ export function TVEditAnilistEntryDrawer({
 
                 {!notReleased ? (
                     <>
-                        <TVStepper
-                            label="Score"
-                            value={Number.parseFloat(form.score) || 0}
-                            max={10}
-                            step={0.5}
-                            onChange={value => setValue("score", value ? String(value) : "")}
-                        />
+                        {/* Fork: one press per score instead of 0.5 steps */}
+                        <View style={{ gap: tvSize(8) }}>
+                            <Text className="font-semibold text-white/55" style={{ fontSize: tvSize(17) }}>
+                                Score
+                            </Text>
+                            <TVScoreRow
+                                value={Number.parseFloat(form.score) || 0}
+                                allowClear
+                                onSelect={value => setValue("score", value ? String(value) : "")}
+                            />
+                        </View>
                         <TVStepper
                             label="Episodes"
                             value={Number.parseInt(form.progress, 10) || 0}

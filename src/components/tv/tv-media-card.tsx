@@ -7,6 +7,7 @@ import type {
 import { useAnimeLibraryEntryDataValue, useMediaEntryListDataValue } from "@/atoms/anilist-collection.atoms"
 import { useServerStatus } from "@/atoms/server.atoms"
 import { usePreferredFocus, useTVFocus } from "@/components/tv/tv-focus"
+import { useOpenTVQuickList } from "@/components/tv/tv-quick-list-drawer"
 import { TVScoreBadge } from "@/components/tv/tv-score-badge"
 import { TV, tvSize } from "@/components/tv/tv-scale"
 import { Ionicons } from "@/lib/icons/Ionicons"
@@ -61,10 +62,13 @@ export const TVMediaCard = React.memo(function TVMediaCard({
     const showScore = showAudienceScore && !hideAudienceScore && !!media.meanScore
 
     const isPreferred = usePreferredFocus(preferred)
+    // Fork: hold OK for quick list controls (tv-quick-list-drawer.tsx)
+    const openQuickList = useOpenTVQuickList()
 
     return (
         <Pressable
             onPress={onPress}
+            onLongPress={() => openQuickList(media)}
             onFocus={focusState.focus}
             onBlur={focusState.blur}
             hasTVPreferredFocus={isPreferred}

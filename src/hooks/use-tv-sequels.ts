@@ -145,7 +145,8 @@ export function useTVSequels(entries: Entry[], listedIds: ReadonlySet<number>, r
     const titleKey = React.useMemo(() => preferredTitleKey(entries.map(entry => entry.media)), [entries])
 
     const query = useQuery({
-        queryKey: ["tv-sequels", seedIds.length, listedIds.size],
+        // Once per launch: list edits afterwards are filtered below instead of refetched
+        queryKey: ["tv-sequels"],
         queryFn: () => loadSequels(seedIds, listedIds),
         enabled: ready && seedIds.length > 0,
         staleTime: Infinity,
@@ -153,8 +154,10 @@ export function useTVSequels(entries: Entry[], listedIds: ReadonlySet<number>, r
     })
 
     return React.useMemo(() => ({
-        media: (query.data ?? []).map(media => withPreferredTitle(media, titleKey)),
+        media: (query.data ?? [])
+            .filter(media => !listedIds.has(media.id))
+            .map(media => withPreferredTitle(media, titleKey)),
         isLoading: query.isLoading,
         isError: query.isError,
-    }), [query.data, query.isError, query.isLoading, titleKey])
+    }), [listedIds, query.data, query.isError, query.isLoading, titleKey])
 }

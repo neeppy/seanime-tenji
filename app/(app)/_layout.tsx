@@ -2,6 +2,7 @@ import { ServerDataWrapper } from "@/api/components/server-data-wrapper"
 import { useServerUrl } from "@/atoms/server.atoms"
 import { useDownloadQueueResumeService } from "@/lib/downloads/download-queue-resume-service"
 import { useDownloadSnapshotRefreshService, useOfflineSyncService, useServerLocalSyncService } from "@/lib/offline"
+import { TVQuickListDrawer } from "@/components/tv/tv-quick-list-drawer"
 import { usePlayerEventListener } from "@/lib/player"
 import { Stack } from "expo-router"
 import { Platform, View } from "react-native"
@@ -43,6 +44,8 @@ export default function AppLayout() {
                 />
                 <Stack.Screen name="(media)" options={{ headerShown: false }} />
             </Stack>
+            {/* Fork: hold OK on a show card for quick list controls */}
+            {Platform.isTV && <TVQuickListDrawer />}
         </ServerDataWrapper>
     )
 }
